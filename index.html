@@ -1,0 +1,1757 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<title>NOVA PLAY — демо-гра</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+<style>
+  :root{
+    --bg-0:#000000; --bg-1:#0d0d0f; --bg-2:#18181b; --bg-2-hover:#212124;
+    --line:#26262a; --text-0:#f5f5f7; --text-1:#8e8e93; --text-2:#57575c;
+    --brand-grad: linear-gradient(135deg,#8a4dff 0%,#ff3d8a 100%);
+    --red: linear-gradient(180deg,#ff5470 0%,#ef2b4d 100%);
+    --success:#30d158; --danger:#ff453a; --warn:#ffb020;
+    --gold: linear-gradient(135deg,#f3dfa8,#c9a961);
+    --radius-l:26px; --radius-m:18px; --radius-s:12px;
+    --shadow-card: 0 24px 60px -22px rgba(0,0,0,.7), 0 0 0 1px rgba(255,255,255,.03);
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;}
+  body{margin:0; background:var(--bg-0); color:var(--text-0); font-family:'Manrope',-apple-system,BlinkMacSystemFont,sans-serif; display:flex; justify-content:center; min-height:100%;}
+  .num{font-family:'JetBrains Mono',monospace;}
+  #app{width:100%; max-width:440px; min-height:100vh; display:flex; flex-direction:column; position:relative; padding:0 20px 90px;}
+  ::selection{background:#ff3d8a; color:#fff;}
+  button{font-family:inherit;}
+
+  /* demo banner */
+  .demo-banner{
+    position:sticky; top:0; z-index:60; margin:0 -20px; padding:9px 16px;
+    background:repeating-linear-gradient(135deg,#3a2a00,#3a2a00 10px,#241a00 10px,#241a00 20px);
+    border-bottom:1px solid #5a4200; color:#ffd873; font-size:11.5px; font-weight:800;
+    text-align:center; letter-spacing:.03em;
+  }
+
+  .screen{display:flex; flex-direction:column; flex:1; animation: screenIn .45s cubic-bezier(.19,1,.22,1);}
+  @keyframes screenIn{from{opacity:0; transform:translateY(14px);} to{opacity:1; transform:translateY(0);}}
+  .brand{display:flex; align-items:center; gap:9px;}
+  .brand .mark{width:26px;height:26px;border-radius:8px; background:var(--brand-grad); display:flex;align-items:center;justify-content:center; flex-shrink:0;}
+  .brand .mark svg{width:14px;height:14px;}
+  .brand span{font-weight:800; letter-spacing:.4px; font-size:15px; color:var(--text-0);}
+
+  input, select{
+    width:100%; background:var(--bg-2); border:1.5px solid var(--line); color:var(--text-0);
+    border-radius:var(--radius-s); padding:16px 16px; font-size:16px; font-family:inherit; outline:none;
+    transition:border-color .2s ease, background .2s ease;
+  }
+  input.num{font-family:'JetBrains Mono',monospace; letter-spacing:1px;}
+  input::placeholder{color:var(--text-2);}
+  input:focus, select:focus{border-color:#8a4dff; background:var(--bg-2-hover);}
+  input.error{border-color:var(--danger);}
+  input:disabled{opacity:.5;}
+
+  .btn{border:none; border-radius:var(--radius-s); padding:16px 20px; font-size:16px; font-weight:700; cursor:pointer;
+    width:100%; display:flex; align-items:center; justify-content:center; gap:10px;
+    transition:transform .15s ease, filter .15s ease, opacity .15s ease;}
+  .btn:active{transform:scale(.97);}
+  .btn-primary{background:var(--red); color:#fff;}
+  .btn-primary:hover{filter:brightness(1.07);}
+  .btn-primary:disabled{opacity:.55; cursor:not-allowed; transform:none;}
+  .btn-gold{background:var(--gold); color:#1a1200;}
+  .btn-gold:hover{filter:brightness(1.05);}
+  .btn-ghost{background:var(--bg-2); color:var(--text-0); border:1.5px solid var(--line);}
+  .btn-ghost:hover{background:var(--bg-2-hover);}
+  .btn-sm{padding:10px 14px; font-size:13px; width:auto;}
+
+  .field-label{font-size:12px; font-weight:700; color:var(--text-2); text-transform:uppercase; letter-spacing:.08em; margin:0 2px 8px;}
+  .hint{font-size:13px; color:var(--text-2); margin-top:10px; text-align:center; line-height:1.5;}
+  .err-msg{font-size:13px; color:var(--danger); margin-top:8px; min-height:16px;}
+
+  .spinner{width:18px;height:18px; border-radius:50%; border:2.5px solid rgba(255,255,255,.35); border-top-color:#fff; animation: spin .7s linear infinite; flex-shrink:0;}
+  .spinner.dark{border-color:rgba(255,255,255,.15); border-top-color:var(--text-1);}
+  @keyframes spin{ to{ transform:rotate(360deg);} }
+  #screen-loading{flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:16px;}
+  #screen-loading .spinner{width:28px; height:28px; border-width:3px;}
+  #screen-loading p{color:var(--text-2); font-size:13px;}
+
+  #screen-email{flex:1; display:flex; flex-direction:column; justify-content:center; gap:26px; padding-bottom:60px;}
+  .hero-mark{width:64px;height:64px;border-radius:20px; background:var(--brand-grad); display:flex;align-items:center;justify-content:center;
+    box-shadow:0 20px 50px -16px rgba(255,61,138,.5); margin-bottom:2px; animation: markPulse 3.5s ease-in-out infinite;}
+  @keyframes markPulse{0%,100%{box-shadow:0 20px 50px -16px rgba(138,77,255,.45);} 50%{box-shadow:0 20px 55px -10px rgba(255,61,138,.55);}}
+  .hero-mark svg{width:30px;height:30px;}
+  h1.title{font-size:28px; font-weight:800; margin:0 0 6px; letter-spacing:-.5px;}
+  p.subtitle{font-size:15px; color:var(--text-1); margin:0; line-height:1.5;}
+
+  .topbar{display:flex; align-items:center; justify-content:space-between; padding:16px 2px 6px;}
+  .avatar{width:36px;height:36px;border-radius:50%; background:var(--bg-2); border:1.5px solid var(--line);
+    display:flex;align-items:center;justify-content:center; font-weight:700; font-size:13px; color:var(--text-1);}
+  .logout-btn{background:var(--bg-2); border:1.5px solid var(--line); color:var(--text-1); border-radius:12px; width:36px;height:36px;
+    display:flex;align-items:center;justify-content:center; cursor:pointer; transition:background .2s, color .2s;}
+  .logout-btn:hover{background:var(--bg-2-hover); color:var(--text-0);}
+
+  .level-pill{display:inline-flex; align-items:center; gap:6px; background:var(--bg-2); border:1px solid var(--line);
+    border-radius:999px; padding:5px 10px 5px 6px; font-size:12px; font-weight:800; color:var(--text-1);}
+  .level-pill .lv-badge{width:18px;height:18px;border-radius:50%; background:var(--brand-grad); display:flex;align-items:center;justify-content:center; color:#fff; font-size:10px;}
+  .vip-pill{display:inline-flex; align-items:center; gap:6px; background:var(--gold); border-radius:999px; padding:5px 12px; font-size:11.5px; font-weight:800; color:#1a1200; letter-spacing:.03em;}
+
+  .balance-block{padding:18px 2px 6px; display:flex; align-items:flex-start; justify-content:space-between; gap:10px;}
+  .balance-label{font-size:13px; color:var(--text-2); font-weight:700; text-transform:uppercase; letter-spacing:.08em; margin-bottom:6px;}
+  .balance-amount{font-size:38px; font-weight:800; letter-spacing:-1px; display:flex; align-items:baseline; gap:6px;}
+  .balance-amount .cur{font-size:22px; color:var(--text-1); font-weight:700;}
+
+  .card-visual{position:relative; margin-top:16px; border-radius:var(--radius-l); padding:22px 22px 20px;
+    background: radial-gradient(130% 100% at 100% 0%, rgba(255,61,138,.16), transparent 55%), radial-gradient(130% 100% at 0% 100%, rgba(138,77,255,.20), transparent 55%), #08080a;
+    border:1px solid rgba(255,255,255,.06); overflow:hidden; box-shadow:var(--shadow-card); min-height:150px;
+    display:flex; flex-direction:column; justify-content:space-between;}
+  .card-visual::after{content:""; position:absolute; inset:0; background:linear-gradient(115deg, transparent 35%, rgba(255,255,255,.08) 48%, transparent 60%); transform:translateX(-120%); animation: sheen 2.6s ease-in-out .4s 1;}
+  @keyframes sheen{ to{transform:translateX(120%);} }
+  .card-top-row{display:flex; justify-content:space-between; align-items:center;}
+  .chip{width:36px;height:26px;border-radius:6px; background:var(--gold); position:relative;}
+  .chip::before{content:""; position:absolute; inset:4px; border:1px solid rgba(0,0,0,.25); border-radius:3px;}
+  .card-brand-mark{font-weight:800; font-size:15px; letter-spacing:.3px; color:#fff; font-style:italic; opacity:.92;}
+  .card-number-row{display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:16px;}
+  .card-number{font-size:18px; letter-spacing:1.5px; color:#fff; font-weight:600;}
+  .copy-btn{background:rgba(255,255,255,.10); border:1px solid rgba(255,255,255,.14); color:#fff; border-radius:10px; padding:8px 10px; font-size:12px; font-weight:700;
+    display:flex; align-items:center; gap:6px; cursor:pointer; transition:background .2s ease, transform .15s ease; white-space:nowrap;}
+  .copy-btn:hover{background:rgba(255,255,255,.18);}
+  .copy-btn:active{transform:scale(.94);}
+  .copy-btn svg{width:13px;height:13px;}
+  .card-bottom-row{margin-top:12px;}
+  .card-holder{font-size:11.5px; color:rgba(255,255,255,.6); text-transform:uppercase; letter-spacing:.07em;}
+
+  .actions-row{display:flex; gap:16px; margin-top:22px; padding:0 2px; flex-wrap:wrap;}
+  .action-btn{display:flex; flex-direction:column; align-items:center; gap:8px; cursor:pointer; color:var(--text-0); background:none; border:none; padding:0;
+    transition:transform .15s ease, opacity .15s ease; width:64px;}
+  .action-btn:active{transform:scale(.93);}
+  .action-btn .icon-wrap{width:54px;height:54px;border-radius:50%; background:var(--bg-2); border:1px solid var(--line); display:flex;align-items:center;justify-content:center; transition:background .2s ease;}
+  .action-btn:hover .icon-wrap{background:var(--bg-2-hover);}
+  .action-btn .icon-wrap svg{width:20px;height:20px;}
+  .action-btn span{font-size:11.5px; font-weight:600; color:var(--text-1); text-align:center;}
+
+  /* loan / vip cards */
+  .info-card{margin-top:22px; padding:16px; background:var(--bg-1); border:1px solid var(--line); border-radius:18px;}
+  .info-card-head{display:flex; align-items:center; justify-content:space-between; margin-bottom:4px;}
+  .info-card-title{font-size:13.5px; font-weight:800;}
+  .info-card-sub{font-size:12.5px; color:var(--text-2); margin-top:2px; line-height:1.5;}
+  .timer-row{display:flex; align-items:center; justify-content:space-between; margin-top:12px; gap:10px;}
+  .timer{font-family:'JetBrains Mono',monospace; font-weight:700; font-size:15px; color:var(--warn);}
+  .timer.danger{color:var(--danger);}
+  .progress-track{height:6px; border-radius:4px; background:var(--bg-2); overflow:hidden; margin-top:10px;}
+  .progress-fill{height:100%; background:var(--brand-grad); border-radius:4px; transition:width .3s ease;}
+  .progress-fill.danger{background:var(--red);}
+
+  .sync-note{display:flex; align-items:center; gap:8px; margin-top:22px; padding:11px 14px; background:var(--bg-1); border:1px solid var(--line); border-radius:14px; font-size:12px; color:var(--text-2); line-height:1.4;}
+  .sync-note svg{width:15px;height:15px; flex-shrink:0; color:var(--text-2);}
+
+  .section-label{font-size:13px; font-weight:800; color:var(--text-1); text-transform:uppercase; letter-spacing:.08em; margin:26px 2px 12px; display:flex; align-items:center; justify-content:space-between;}
+  .tx-list{display:flex; flex-direction:column; gap:2px; padding-bottom:10px;}
+  .tx-item{display:flex; align-items:center; gap:12px; padding:12px 4px; border-bottom:1px solid var(--line); cursor:pointer; transition:background .15s ease; border-radius:10px;}
+  .tx-item:hover{background:var(--bg-1);}
+  .tx-item:last-child{border-bottom:none;}
+  .tx-icon{width:38px;height:38px;border-radius:50%; flex-shrink:0; display:flex;align-items:center;justify-content:center; background:var(--bg-2);}
+  .tx-icon.topup{background:var(--brand-grad);}
+  .tx-icon.gold{background:var(--gold);}
+  .tx-icon svg{width:16px;height:16px;}
+  .tx-info{flex:1; min-width:0;}
+  .tx-title{font-size:14px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .tx-date{font-size:12px; color:var(--text-2); margin-top:2px;}
+  .tx-right{display:flex; align-items:center; gap:8px;}
+  .tx-amount{font-size:14px; font-weight:700; white-space:nowrap;}
+  .tx-amount.pos{color:var(--success);}
+  .tx-amount.neg{color:var(--text-0);}
+  .receipt-chip{width:26px;height:26px;border-radius:50%; background:var(--bg-2); border:1px solid var(--line); display:flex;align-items:center;justify-content:center; color:var(--text-2); flex-shrink:0;}
+  .receipt-chip svg{width:12px;height:12px;}
+  .empty-tx{text-align:center; color:var(--text-2); font-size:13px; padding:34px 10px;}
+
+  .overlay{position:fixed; inset:0; background:rgba(0,0,0,.65); backdrop-filter:blur(6px); display:flex; align-items:flex-end; justify-content:center; z-index:50; animation: fadeIn .25s ease;}
+  @keyframes fadeIn{from{opacity:0;} to{opacity:1;}}
+  .modal{width:100%; max-width:440px; background:var(--bg-1); border:1px solid var(--line); border-radius:26px 26px 0 0; padding:14px 20px 28px; max-height:88vh; overflow-y:auto; animation: modalUp .35s cubic-bezier(.19,1,.22,1);}
+  @keyframes modalUp{ from{transform:translateY(100%);} to{transform:translateY(0);} }
+  .modal-handle{width:38px;height:4px;border-radius:2px; background:var(--line); margin:6px auto 18px;}
+  .modal-header{display:flex; align-items:center; justify-content:space-between; margin-bottom:18px;}
+  .modal-header h2{font-size:19px; margin:0; font-weight:800;}
+  .close-x{width:32px;height:32px;border-radius:50%; background:var(--bg-2); border:none; color:var(--text-1); display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:18px; line-height:1;}
+  .close-x:hover{background:var(--bg-2-hover); color:var(--text-0);}
+  .field{margin-bottom:16px;}
+  .chip-row{display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;}
+  .amount-chip{background:var(--bg-2); border:1px solid var(--line); color:var(--text-0); border-radius:10px; padding:8px 12px; font-size:13px; font-weight:700; cursor:pointer;}
+  .amount-chip:hover{background:var(--bg-2-hover);}
+  .amount-chip.active{border-color:#8a4dff; background:rgba(138,77,255,.12);}
+
+  .receipt-hero{display:flex; flex-direction:column; align-items:center; gap:12px; padding:6px 0 20px;}
+  .receipt-avatar{width:60px;height:60px;border-radius:50%; display:flex;align-items:center;justify-content:center; position:relative;}
+  .receipt-avatar.out{background:var(--bg-2); border:1px solid var(--line);}
+  .receipt-avatar.in{background:rgba(48,209,88,.14); border:1px solid rgba(48,209,88,.3);}
+  .receipt-avatar.topup{background:var(--brand-grad);}
+  .receipt-avatar.gold{background:var(--gold);}
+  .receipt-avatar svg{width:24px;height:24px;}
+  .receipt-status{font-size:16px; font-weight:800;}
+  .receipt-sub{font-size:13px; color:var(--text-2);}
+  .receipt-rows{border-top:1px solid var(--line); padding-top:6px;}
+  .receipt-row{display:flex; justify-content:space-between; align-items:center; gap:12px; padding:13px 2px; border-bottom:1px solid var(--line);}
+  .receipt-row:last-child{border-bottom:none;}
+  .receipt-row .k{font-size:13.5px; color:var(--text-2);}
+  .receipt-row .v{font-size:13.5px; font-weight:700; color:var(--text-0); text-align:right;}
+  .receipt-row .v.num{font-family:'JetBrains Mono',monospace; letter-spacing:.5px; font-size:13px;}
+  .badge-ok{display:inline-flex; align-items:center; gap:4px; color:var(--success); font-weight:700;}
+  .badge-ok svg{width:13px;height:13px;}
+
+  #toast-container{position:fixed; top:18px; left:50%; transform:translateX(-50%); z-index:100; display:flex; flex-direction:column; gap:10px; width:100%; max-width:400px; padding:0 20px; pointer-events:none;}
+  .toast{background:var(--bg-2); border:1px solid var(--line); border-left:3px solid var(--success); color:var(--text-0); padding:14px 16px; border-radius:14px; font-size:14px; font-weight:600; box-shadow:0 12px 30px -8px rgba(0,0,0,.6); animation: toastIn .35s cubic-bezier(.19,1,.22,1), toastOut .3s ease 2.7s forwards;}
+  .toast.error{border-left-color:var(--danger);}
+  .toast.gold{border-left-color:#c9a961;}
+  @keyframes toastIn{from{opacity:0; transform:translateY(-16px);} to{opacity:1; transform:translateY(0);}}
+  @keyframes toastOut{to{opacity:0; transform:translateY(-10px);}}
+
+  /* tab bar */
+  .tabbar{position:fixed; bottom:0; left:50%; transform:translateX(-50%); width:100%; max-width:440px; background:rgba(13,13,15,.92); backdrop-filter:blur(14px); border-top:1px solid var(--line); display:flex; z-index:40; padding:8px 6px calc(8px + env(safe-area-inset-bottom));}
+  .tab-btn{flex:1; background:none; border:none; display:flex; flex-direction:column; align-items:center; gap:4px; padding:6px 2px; cursor:pointer; color:var(--text-2); transition:color .2s ease;}
+  .tab-btn.active{color:var(--text-0);}
+  .tab-btn svg{width:20px;height:20px;}
+  .tab-btn span{font-size:10.5px; font-weight:700;}
+
+  /* market */
+  .market-tabs{display:flex; gap:8px; margin:16px 0 4px;}
+  .mtab{flex:1; text-align:center; padding:10px; border-radius:12px; background:var(--bg-2); border:1px solid var(--line); font-size:12.5px; font-weight:700; color:var(--text-1); cursor:pointer;}
+  .mtab.active{background:var(--brand-grad); color:#fff; border-color:transparent;}
+  .grid{display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:16px; padding-bottom:20px;}
+  .prod-card{background:var(--bg-1); border:1px solid var(--line); border-radius:16px; padding:12px; display:flex; flex-direction:column; gap:8px;}
+  .prod-emoji{font-size:30px; text-align:center; padding:10px 0; background:var(--bg-2); border-radius:12px;}
+  .prod-name{font-size:12.5px; font-weight:700; line-height:1.3; min-height:32px;}
+  .prod-seller{font-size:10.5px; color:var(--text-2);}
+  .prod-price{font-size:14px; font-weight:800; font-family:'JetBrains Mono',monospace;}
+  .prod-buy{background:var(--bg-2); border:1px solid var(--line); color:var(--text-0); border-radius:10px; padding:8px; font-size:12px; font-weight:700; cursor:pointer;}
+  .prod-buy:hover{background:var(--bg-2-hover);}
+  .prod-buy:disabled{opacity:.4;}
+  .empty-state{text-align:center; color:var(--text-2); font-size:13px; padding:40px 14px; grid-column:1/-1;}
+  .my-listing{display:flex; align-items:center; gap:10px; background:var(--bg-1); border:1px solid var(--line); border-radius:14px; padding:10px 12px; margin-bottom:8px;}
+  .my-listing .info{flex:1;}
+  .my-listing .title{font-size:13px; font-weight:700;}
+  .my-listing .price{font-size:12px; color:var(--text-2); font-family:'JetBrains Mono',monospace;}
+  .del-btn{background:none; border:none; color:var(--danger); font-size:18px; cursor:pointer; padding:4px 8px;}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="modal-root"></div>
+<div id="toast-container"></div>
+
+<script>
+(function(){
+  "use strict";
+
+  var SESSION_KEY = "nova_play_current_v1";
+  var ADMIN_EMAIL = "netuimeni045@gmail.com";
+  var APP_NAME = "NOVA PLAY";
+  var CUR = "N₴"; // demo currency symbol, deliberately not a real-money symbol/name
+
+  var STARTING_BALANCE = 1000;
+  var LOAN_TERM_MS = 3 * 24 * 60 * 60 * 1000; // 3 days
+  var VIP_COST = 500000;
+  var VIP_DAILY_PAYOUT = 10000;
+  var VIP_PERIOD_MS = 24 * 60 * 60 * 1000;
+  var MEGA_VIP_COST = 2000000;
+  var MEGA_VIP_LEVEL_BONUS = 20;
+  var MEGA_VIP_DAILY_PAYOUT = 100000;
+  var SAVINGS_DAILY_RATE = 0.20; // +20% per day, compounded
+  var LOAN_LEVEL_LIMITS = [0, 500, 1000, 1800, 2800, 4000, 5000]; // index = level tier, capped at 5000
+  var MAX_LOAN_CAP = 5000;
+
+  // ---------- XP / leveling ----------
+  // Every meaningful action grants XP so the level visibly progresses from
+  // loans, transfers, purchases and sales alike (not just loan repayments).
+  var XP_PER_LEVEL = 300;
+  var XP_REWARDS = {
+    loan_repay: 250,
+    purchase: 15,
+    sale: 20,
+    transfer_out: 10,
+    transfer_in: 10
+  };
+  function levelFromXp(xp){ return 1 + Math.floor((xp || 0) / XP_PER_LEVEL); }
+  function addXp(user, kind){
+    var amt = XP_REWARDS[kind] || 0;
+    if(amt <= 0) return;
+    user.xp = (user.xp || 0) + amt;
+    var newLevel = levelFromXp(user.xp) + (user.megaLevelBonus || 0);
+    if(newLevel > user.level) user.level = newLevel;
+  }
+  function loanTierForLevel(level){
+    // credit tier only follows "earned" level (xp-based), mega bonus levels
+    // don't unlock bigger loans by themselves
+    var baseLevel = Math.max(1, level - (0)); // kept simple: tier follows full level
+    var idx = Math.min(baseLevel, LOAN_LEVEL_LIMITS.length - 1);
+    return idx;
+  }
+  function maxLoanForLevel(level){
+    var idx = loanTierForLevel(level);
+    return Math.min(LOAN_LEVEL_LIMITS[idx], MAX_LOAN_CAP);
+  }
+
+  // ================= Firebase Firestore storage =================
+  // Fill in your own project's config below (Firebase Console → Project
+  // settings → Your apps → SDK setup and configuration → Config).
+  // This is what makes data sync across different devices/browsers when
+  // the site is hosted as a plain static site (e.g. GitHub Pages) — the
+  // app talks to your Firestore database in the cloud instead of the
+  // browser's local storage.
+  var FIREBASE_CONFIG = {
+    apiKey: "AIzaSyCc_8l-wmNUOuP-DOLUiVuOsra0WgywLFM",
+    authDomain: "nova-bank-55068.firebaseapp.com",
+    projectId: "nova-bank-55068",
+    storageBucket: "nova-bank-55068.firebasestorage.app",
+    messagingSenderId: "313914933028",
+    appId: "1:313914933028:web:993ce4316743b1340afdb1"
+  };
+
+  var db = null;
+  var firebaseReady = false;
+  try{
+    if(window.firebase && FIREBASE_CONFIG.apiKey !== "YOUR_API_KEY"){
+      firebase.initializeApp(FIREBASE_CONFIG);
+      db = firebase.firestore();
+      firebaseReady = true;
+    }
+  }catch(e){ firebaseReady = false; }
+
+  // Local fallback so the app still works (single-device only) if Firebase
+  // isn't configured yet, or the network/Firestore is unreachable.
+  var memoryFallback = {};
+  var LOCAL_PREFIX = "nova_play_fallback:";
+  function localFallbackGet(key){
+    try{ var v = localStorage.getItem(LOCAL_PREFIX + key); return (v === null || v === undefined) ? null : v; }
+    catch(e){ return (key in memoryFallback) ? memoryFallback[key] : null; }
+  }
+  function localFallbackSet(key, value){
+    try{ localStorage.setItem(LOCAL_PREFIX + key, value); return true; }
+    catch(e){ memoryFallback[key] = value; return true; }
+  }
+  function localFallbackDelete(key){
+    try{ localStorage.removeItem(LOCAL_PREFIX + key); }catch(e){ delete memoryFallback[key]; }
+  }
+  function wait(ms){ return new Promise(function(res){ setTimeout(res, ms); }); }
+
+  if(!firebaseReady){
+    console.warn("NOVA PLAY: Firebase не налаштовано (FIREBASE_CONFIG). Дані зберігаються лише локально на цьому пристрої.");
+  }
+
+  // ---------- users ("users" collection, doc id = email) ----------
+  async function getUser(email){
+    if(firebaseReady){
+      try{
+        var snap = await db.collection("users").doc(email).get();
+        if(snap.exists) return normalizeUser(snap.data());
+        return null;
+      }catch(e){ /* fall through to local */ }
+    }
+    var raw = localFallbackGet("user:" + email);
+    if(!raw) return null;
+    try{ return normalizeUser(JSON.parse(raw)); }catch(e){ return null; }
+  }
+  function normalizeUser(user){
+    if(user.level === undefined) user.level = 1;
+    if(user.xp === undefined) user.xp = 0;
+    if(user.loan === undefined) user.loan = null;
+    if(user.loanRepaid === undefined) user.loanRepaid = 0;
+    if(user.vip === undefined) user.vip = false;
+    if(user.vipSince === undefined) user.vipSince = null;
+    if(user.vipLastPayout === undefined) user.vipLastPayout = null;
+    if(user.mega === undefined) user.mega = false;
+    if(user.megaSince === undefined) user.megaSince = null;
+    if(user.megaLevelBonus === undefined) user.megaLevelBonus = 0;
+    if(user.savings === undefined) user.savings = {balance: 0, lastGrowthAt: null};
+    if(!user.savings) user.savings = {balance: 0, lastGrowthAt: null};
+    if(user.savings.balance === undefined) user.savings.balance = 0;
+    if(user.transactions === undefined) user.transactions = [];
+    if(user.balance === undefined) user.balance = STARTING_BALANCE;
+    return user;
+  }
+  async function saveUser(user){
+    localFallbackSet("user:" + user.email, JSON.stringify(user)); // always keep an offline copy too
+    if(firebaseReady){
+      try{ await db.collection("users").doc(user.email).set(user); return true; }
+      catch(e){ return true; } // local copy already saved
+    }
+    return true;
+  }
+
+  // ---------- card index ("cardindex" collection, doc id = digits) ----------
+  async function getCardOwnerEmail(cardDigits){
+    if(firebaseReady){
+      try{
+        var snap = await db.collection("cardindex").doc(cardDigits).get();
+        return snap.exists ? snap.data().email : null;
+      }catch(e){ /* fall through */ }
+    }
+    return localFallbackGet("cardindex:" + cardDigits);
+  }
+  async function reserveCard(cardDigits, email){
+    localFallbackSet("cardindex:" + cardDigits, email);
+    if(firebaseReady){
+      try{ await db.collection("cardindex").doc(cardDigits).set({email: email}); return true; }
+      catch(e){ return true; }
+    }
+    return true;
+  }
+  async function generateUniqueCard(){
+    var digits, taken, attempts = 0;
+    do{
+      digits = "5375";
+      for(var i=0;i<12;i++){ digits += Math.floor(Math.random()*10); }
+      var owner = await getCardOwnerEmail(digits);
+      taken = !!owner;
+      attempts++;
+    } while(taken && attempts < 25);
+    return digits;
+  }
+
+  // ---------- listings ("listings" collection, doc id = listing id) ----------
+  async function getListing(id){
+    if(firebaseReady){
+      try{
+        var snap = await db.collection("listings").doc(id).get();
+        return snap.exists ? snap.data() : null;
+      }catch(e){ /* fall through */ }
+    }
+    var raw = localFallbackGet("listing:" + id);
+    if(!raw) return null;
+    try{ return JSON.parse(raw); }catch(e){ return null; }
+  }
+  async function saveListing(listing){
+    localFallbackSet("listing:" + listing.id, JSON.stringify(listing));
+    if(firebaseReady){
+      try{ await db.collection("listings").doc(listing.id).set(listing); return true; }
+      catch(e){ return true; }
+    }
+    return true;
+  }
+  async function deleteListing(id){
+    localFallbackDelete("listing:" + id);
+    if(firebaseReady){
+      try{ await db.collection("listings").doc(id).delete(); }catch(e){}
+    }
+  }
+  async function getAllListings(retryOnEmpty){
+    if(firebaseReady){
+      try{
+        var qs = await db.collection("listings").orderBy("createdAt", "desc").get();
+        var out = [];
+        qs.forEach(function(doc){ out.push(doc.data()); });
+        if(out.length === 0 && retryOnEmpty){
+          await wait(500);
+          var qs2 = await db.collection("listings").orderBy("createdAt", "desc").get();
+          qs2.forEach(function(doc){ out.push(doc.data()); });
+        }
+        return out;
+      }catch(e){ /* fall through to local */ }
+    }
+    // local-only fallback: scan localStorage keys with the listing: prefix
+    var out2 = [];
+    try{
+      for(var i=0;i<localStorage.length;i++){
+        var k = localStorage.key(i);
+        if(k && k.indexOf(LOCAL_PREFIX + "listing:") === 0){
+          try{ out2.push(JSON.parse(localStorage.getItem(k))); }catch(e){}
+        }
+      }
+    }catch(e){}
+    return out2.sort(function(a,b){ return b.createdAt - a.createdAt; });
+  }
+
+  // ================= session =================
+  function getSession(){ try{ return localStorage.getItem(SESSION_KEY); }catch(e){ return null; } }
+  function setSession(email){
+    try{ if(email) localStorage.setItem(SESSION_KEY, email); else localStorage.removeItem(SESSION_KEY); }catch(e){}
+  }
+
+  // ---------- utils ----------
+  function normalizeEmail(e){ return (e||"").replace(/\s+/g, "").toLowerCase(); }
+  function isValidEmail(e){ return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e); }
+  function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,8); }
+  function formatMoney(n){
+    n = Math.round(n * 100) / 100;
+    var neg = n < 0; n = Math.abs(n);
+    var parts = n.toFixed(2).split(".");
+    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+    return (neg ? "-" : "") + parts[0] + "," + parts[1];
+  }
+  function formatDate(ts){
+    var d = new Date(ts);
+    var day = String(d.getDate()).padStart(2,"0");
+    var monthNames = ["січ","лют","бер","кві","тра","чер","лип","сер","вер","жов","лис","гру"];
+    var hh = String(d.getHours()).padStart(2,"0");
+    var mm = String(d.getMinutes()).padStart(2,"0");
+    return day + " " + monthNames[d.getMonth()] + " · " + hh + ":" + mm;
+  }
+  function formatDuration(ms){
+    if(ms <= 0) return "00:00:00";
+    var s = Math.floor(ms/1000);
+    var d = Math.floor(s / 86400); s -= d*86400;
+    var h = Math.floor(s / 3600); s -= h*3600;
+    var m = Math.floor(s / 60); s -= m*60;
+    if(d > 0) return d + "д " + String(h).padStart(2,"0") + "г " + String(m).padStart(2,"0") + "хв";
+    return String(h).padStart(2,"0") + ":" + String(m).padStart(2,"0") + ":" + String(s).padStart(2,"0");
+  }
+  function last4(digits){ return digits ? digits.slice(-4) : "----"; }
+  function maskCard(digits){ return digits ? "•••• •••• •••• " + last4(digits) : "•••• •••• •••• ----"; }
+  function cardDigitsOnly(v){ return (v||"").replace(/\D/g,""); }
+  function escapeHtml(str){
+    return String(str).replace(/[&<>"']/g, function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]; });
+  }
+  function showToast(msg, type){
+    var c = document.getElementById("toast-container");
+    var el = document.createElement("div");
+    el.className = "toast" + (type ? " " + type : "");
+    el.textContent = msg;
+    c.appendChild(el);
+    setTimeout(function(){ el.remove(); }, 3100);
+  }
+
+  var ICONS = {
+    logoMark: '<svg viewBox="0 0 24 24" fill="none"><path d="M12 2l2.2 6.8L21 11l-6.8 2.2L12 20l-2.2-6.8L3 11l6.8-2.2L12 2z" fill="white"/></svg>',
+    send: '<svg viewBox="0 0 24 24" fill="none"><path d="M4 20l16-8L4 4v6l10 2-10 2v6z" fill="white"/></svg>',
+    plus: '<svg viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="white" stroke-width="2.4" stroke-linecap="round"/></svg>',
+    logout: '<svg viewBox="0 0 24 24" fill="none"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    copy: '<svg viewBox="0 0 24 24" fill="none"><rect x="9" y="9" width="12" height="12" rx="2" stroke="white" stroke-width="2"/><path d="M5 15H4a1 1 0 01-1-1V4a1 1 0 011-1h10a1 1 0 011 1v1" stroke="white" stroke-width="2"/></svg>',
+    check: '<svg viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="white" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    checkCircle: '<svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" fill="#30d158"/><path d="M8 12l3 3 5-6" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    txOut: '<svg viewBox="0 0 24 24" fill="none"><path d="M7 17L17 7M17 7H8M17 7v9" stroke="#ff453a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    txIn: '<svg viewBox="0 0 24 24" fill="none"><path d="M17 7L7 17M7 17h9M7 17V8" stroke="#30d158" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    receipt: '<svg viewBox="0 0 24 24" fill="none"><path d="M6 2h12v20l-3-2-3 2-3-2-3 2V2z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M9 8h6M9 12h6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>',
+    globe: '<svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.6"/><path d="M3 12h18M12 3c2.5 2.6 3.8 5.7 3.8 9s-1.3 6.4-3.8 9c-2.5-2.6-3.8-5.7-3.8-9S9.5 5.6 12 3z" stroke="currentColor" stroke-width="1.6"/></svg>',
+    loan: '<svg viewBox="0 0 24 24" fill="none"><rect x="3" y="6" width="18" height="13" rx="2" stroke="currentColor" stroke-width="1.7"/><path d="M3 10h18M7 14h4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>',
+    crown: '<svg viewBox="0 0 24 24" fill="none"><path d="M3 8l4 3 5-7 5 7 4-3-2 11H5L3 8z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>',
+    market: '<svg viewBox="0 0 24 24" fill="none"><path d="M3 7h18l-1.5 11a2 2 0 01-2 1.7H6.5a2 2 0 01-2-1.7L3 7z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M8 7a4 4 0 018 0" stroke="currentColor" stroke-width="1.7"/></svg>',
+    home: '<svg viewBox="0 0 24 24" fill="none"><path d="M4 11l8-7 8 7v9a1 1 0 01-1 1h-4v-6H9v6H5a1 1 0 01-1-1v-9z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>',
+    user: '<svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="4" stroke="currentColor" stroke-width="1.7"/><path d="M4 20c1.5-4 5-6 8-6s6.5 2 8 6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>',
+    tag: '<svg viewBox="0 0 24 24" fill="none"><path d="M3 12l9-9h7v7l-9 9-7-7z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><circle cx="15.5" cy="8.5" r="1.3" fill="currentColor"/></svg>'
+  };
+
+  // ---------- product catalog (demo store, fictional items/prices) ----------
+  var CATALOG = [
+    {id:"c1", name:"Хліб «Домашній»", price:35, emoji:"🍞"},
+    {id:"c2", name:"Молоко 1л", price:42, emoji:"🥛"},
+    {id:"c3", name:"Яйця 10шт", price:65, emoji:"🥚"},
+    {id:"c4", name:"Сир твердий 300г", price:180, emoji:"🧀"},
+    {id:"c5", name:"Курка філе 1кг", price:210, emoji:"🍗"},
+    {id:"c6", name:"Яблука 1кг", price:38, emoji:"🍎"},
+    {id:"c7", name:"Банани 1кг", price:45, emoji:"🍌"},
+    {id:"c8", name:"Кава мелена 250г", price:145, emoji:"☕"},
+    {id:"c9", name:"Чай 25пак", price:60, emoji:"🍵"},
+    {id:"c10", name:"Вода негаз. 1.5л", price:22, emoji:"💧"},
+    {id:"c11", name:"Кола 1л", price:48, emoji:"🥤"},
+    {id:"c12", name:"Шоколад плитка", price:55, emoji:"🍫"},
+    {id:"c13", name:"Чіпси 150г", price:70, emoji:"🍟"},
+    {id:"c14", name:"Пральний порошок 3кг", price:320, emoji:"🧺"},
+    {id:"c15", name:"Засіб для посуду", price:75, emoji:"🧴"},
+    {id:"c16", name:"Туалетний папір 8рул", price:110, emoji:"🧻"},
+    {id:"c17", name:"Зубна паста", price:65, emoji:"🪥"},
+    {id:"c18", name:"Шампунь 400мл", price:130, emoji:"🧴"},
+    {id:"c19", name:"Навушники дротові", price:250, emoji:"🎧"},
+    {id:"c20", name:"Powerbank 10000mAh", price:650, emoji:"🔋"},
+    {id:"c21", name:"USB кабель", price:90, emoji:"🔌"},
+    {id:"c22", name:"Футболка", price:280, emoji:"👕"},
+    {id:"c23", name:"Шкарпетки 3пари", price:95, emoji:"🧦"},
+    {id:"c24", name:"Кепка", price:190, emoji:"🧢"},
+    {id:"c25", name:"М'яч футбольний", price:420, emoji:"⚽"},
+    {id:"c26", name:"Зошит А5", price:25, emoji:"📓"},
+    {id:"c27", name:"Ручка кулькова", price:12, emoji:"🖊️"},
+    {id:"c28", name:"Рюкзак", price:750, emoji:"🎒"}
+  ];
+
+  // ---------- app state ----------
+  var state = {
+    screen: "loading",
+    tab: "home", // home | loan | market | profile
+    marketTab: "catalog", // catalog | community | mine
+    modal: null,
+    email: null,
+    user: null,
+    listings: [],
+    timerHandle: null,
+    payoutCheckHandle: null
+  };
+
+  var app = document.getElementById("app");
+  var modalRoot = document.getElementById("modal-root");
+
+  function render(){
+    app.innerHTML = "";
+
+    var banner = document.createElement("div");
+    banner.className = "demo-banner";
+    banner.textContent = "🎮 ДЕМО-ГРА NOVA PLAY · Віртуальна валюта " + CUR + " · Не справжні гроші, платежі не приймаються";
+    app.appendChild(banner);
+
+    if(state.screen === "loading") app.appendChild(renderLoadingScreen());
+    else if(state.screen === "email") app.appendChild(renderEmailScreen());
+    else if(state.screen === "home"){
+      if(state.tab === "home") app.appendChild(renderHomeTab());
+      else if(state.tab === "loan") app.appendChild(renderLoanTab());
+      else if(state.tab === "market") app.appendChild(renderMarketTab());
+      else if(state.tab === "profile") app.appendChild(renderProfileTab());
+      app.appendChild(renderTabBar());
+    }
+
+    modalRoot.innerHTML = "";
+    if(state.modal){
+      if(state.modal.type === "transfer") modalRoot.appendChild(renderTransferModal());
+      else if(state.modal.type === "topup") modalRoot.appendChild(renderTopupModal());
+      else if(state.modal.type === "receipt") modalRoot.appendChild(renderReceiptModal(state.modal.tx));
+      else if(state.modal.type === "loan") modalRoot.appendChild(renderLoanModal());
+      else if(state.modal.type === "vip") modalRoot.appendChild(renderVipModal());
+      else if(state.modal.type === "mega") modalRoot.appendChild(renderMegaVipModal());
+      else if(state.modal.type === "savings") modalRoot.appendChild(renderSavingsModal());
+      else if(state.modal.type === "sell") modalRoot.appendChild(renderSellModal());
+    }
+  }
+  function closeModal(){ state.modal = null; render(); }
+  async function switchTab(tab){
+    state.tab = tab; state.modal = null;
+    render(); // instant feedback
+    // Pull the freshest user record so level/loan/savings never look stale
+    // after actions taken on another device or session.
+    if(state.email){
+      var fresh = await getUser(state.email);
+      if(fresh && state.tab === tab){ state.user = fresh; render(); }
+    }
+  }
+
+  function renderLoadingScreen(){
+    var wrap = document.createElement("div");
+    wrap.className = "screen"; wrap.id = "screen-loading";
+    wrap.innerHTML = '<div class="spinner dark"></div><p>Завантаження демо-гри…</p>';
+    return wrap;
+  }
+
+  // ---------- email screen ----------
+  function renderEmailScreen(){
+    var wrap = document.createElement("div");
+    wrap.className = "screen"; wrap.id = "screen-email";
+    wrap.innerHTML =
+      '<div class="hero-mark">' + ICONS.logoMark + '</div>' +
+      '<div><h1 class="title">Вітаємо у грі</h1>' +
+      '<p class="subtitle">Введіть будь-який email, щоб створити ігровий профіль з демо-карткою ' + APP_NAME + '. Це не справжній банк — усі гроші тут віртуальні, лише для гри.</p></div>' +
+      '<div><div class="field-label">Email</div>' +
+      '<input type="text" id="email-input" placeholder="you@example.com" autocomplete="email" inputmode="email" autocapitalize="off" autocorrect="off" spellcheck="false">' +
+      '<div class="err-msg" id="email-error"></div></div>' +
+      '<button class="btn btn-primary" id="continue-btn"><span id="continue-label">Почати гру</span></button>' +
+      '<p class="hint">Прогрес зберігається на сервері прив’язаним до email — увійдіть з тим самим email на іншому пристрої. Стартовий бонус: ' + formatMoney(STARTING_BALANCE) + ' ' + CUR + '.</p>';
+
+    var input = wrap.querySelector("#email-input");
+    var btn = wrap.querySelector("#continue-btn");
+    var label = wrap.querySelector("#continue-label");
+    var err = wrap.querySelector("#email-error");
+
+    async function submit(){
+      if(btn.disabled) return;
+      var value = normalizeEmail(input.value);
+      if(!isValidEmail(value)){
+        input.classList.add("error");
+        err.textContent = "Введіть коректний email (наприклад, you@example.com)";
+        input.focus(); return;
+      }
+      input.classList.remove("error"); err.textContent = "";
+      btn.disabled = true; input.disabled = true;
+      label.innerHTML = '<span class="spinner"></span>';
+      try{ await loginOrRegister(value); }
+      catch(e){
+        showToast("Щось пішло не так. Спробуйте ще раз", "error");
+        btn.disabled = false; input.disabled = false; label.textContent = "Почати гру";
+      }
+    }
+    btn.addEventListener("click", submit);
+    input.addEventListener("input", function(){ input.classList.remove("error"); err.textContent = ""; });
+    input.addEventListener("keydown", function(e){ if(e.key === "Enter"){ e.preventDefault(); submit(); } });
+    setTimeout(function(){ input.focus(); }, 300);
+    return wrap;
+  }
+
+  async function loginOrRegister(email){
+    var user;
+    try{ user = await getUser(email); }
+    catch(e){ showToast("Помилка синхронізації. Спробуйте ще раз", "error"); render(); return; }
+    if(!user){
+      try{
+        var cardDigits = await generateUniqueCard();
+        user = normalizeUser({
+          email: email,
+          card: cardDigits.replace(/(.{4})/g,"$1 ").trim(),
+          balance: STARTING_BALANCE,
+          transactions: [{id:uid(), kind:"bonus", amount: STARTING_BALANCE, date: Date.now(), purpose:"Стартовий бонус гри"}],
+          createdAt: Date.now()
+        });
+        await saveUser(user);
+        await reserveCard(cardDigits, email);
+      }catch(e){
+        showToast("Не вдалося створити профіль. Спробуйте ще раз", "error"); render(); return;
+      }
+      showToast("Профіль створено! +" + formatMoney(STARTING_BALANCE) + " " + CUR + " стартового бонусу");
+    } else {
+      showToast("З поверненням!");
+    }
+    setSession(email);
+    state.email = email; state.user = user; state.screen = "home"; state.tab = "home";
+    render();
+    startTimers();
+  }
+
+  // ---------- periodic checks: loan default + vip payout ----------
+  function startTimers(){
+    if(state.timerHandle) clearInterval(state.timerHandle);
+    state.timerHandle = setInterval(function(){
+      if(state.screen === "home" && !state.modal) updateLiveTimers();
+    }, 1000);
+    if(state.payoutCheckHandle) clearInterval(state.payoutCheckHandle);
+    checkLoanAndVip();
+    state.payoutCheckHandle = setInterval(checkLoanAndVip, 15000);
+  }
+
+  function updateLiveTimers(){
+    var u = state.user; if(!u) return;
+    var loanEl = document.getElementById("loan-timer-val");
+    if(loanEl && u.loan){
+      var remain = u.loan.dueAt - Date.now();
+      loanEl.textContent = formatDuration(remain);
+      loanEl.className = "timer" + (remain < 6*60*60*1000 ? " danger" : "");
+      var fill = document.getElementById("loan-progress-fill");
+      if(fill){
+        var total = u.loan.dueAt - u.loan.takenAt;
+        var pct = Math.max(0, Math.min(100, (remain/total)*100));
+        fill.style.width = pct + "%";
+        fill.className = "progress-fill" + (pct < 20 ? " danger" : "");
+      }
+    }
+    var vipEl = document.getElementById("vip-timer-val");
+    if(vipEl && (u.vip || u.mega)){
+      var nextAt = (u.vipLastPayout || u.vipSince || u.megaSince) + VIP_PERIOD_MS;
+      var remainV = nextAt - Date.now();
+      vipEl.textContent = remainV > 0 ? formatDuration(remainV) : "Готово до виплати";
+    }
+    var savEl = document.getElementById("savings-timer-val");
+    if(savEl && u.savings && u.savings.balance > 0){
+      var nextS = (u.savings.lastGrowthAt || Date.now()) + VIP_PERIOD_MS;
+      var remainS = nextS - Date.now();
+      savEl.textContent = remainS > 0 ? formatDuration(remainS) : "Готово до нарахування";
+    }
+  }
+
+  async function checkLoanAndVip(){
+    if(!state.email) return;
+    var user = await getUser(state.email);
+    if(!user) return;
+    var changed = false;
+    var now = Date.now();
+
+    if(user.loan && now >= user.loan.dueAt){
+      var amt = user.loan.amount;
+      user.balance = Math.round((user.balance - amt) * 100) / 100; // auto-deduct; can go negative (debt)
+      user.transactions.push({id:uid(), kind:"loan_auto", amount:-amt, date: now, purpose:"Автосписання за прострочений кредит"});
+      user.loan = null;
+      changed = true;
+      if(state.email){ showToast("Кредит не сплачено вчасно — " + formatMoney(amt) + " " + CUR + " списано автоматично", "error"); }
+    }
+
+    if(user.vip || user.mega){
+      var last = user.vipLastPayout || user.vipSince || user.megaSince || now;
+      if(now - last >= VIP_PERIOD_MS){
+        var cycles = Math.floor((now - last) / VIP_PERIOD_MS);
+        cycles = Math.min(cycles, 30); // safety cap for demo
+        var dailyAmt = user.mega ? MEGA_VIP_DAILY_PAYOUT : VIP_DAILY_PAYOUT;
+        var payout = cycles * dailyAmt;
+        user.balance = Math.round((user.balance + payout) * 100) / 100;
+        user.vipLastPayout = last + cycles * VIP_PERIOD_MS;
+        user.transactions.push({id:uid(), kind:"vip_payout", amount: payout, date: now, purpose:(user.mega ? "Мега VIP" : "VIP") + " щоденна виплата (" + cycles + "x)"});
+        changed = true;
+        showToast((user.mega ? "Мега VIP" : "VIP") + "-виплата: +" + formatMoney(payout) + " " + CUR, "gold");
+      }
+    }
+
+    if(user.savings && user.savings.balance > 0){
+      var lastS = user.savings.lastGrowthAt || now;
+      if(now - lastS >= VIP_PERIOD_MS){
+        var cyclesS = Math.floor((now - lastS) / VIP_PERIOD_MS);
+        cyclesS = Math.min(cyclesS, 30); // safety cap for demo
+        var before = user.savings.balance;
+        var grown = before * Math.pow(1 + SAVINGS_DAILY_RATE, cyclesS);
+        grown = Math.round(grown * 100) / 100;
+        var gain = Math.round((grown - before) * 100) / 100;
+        user.savings.balance = grown;
+        user.savings.lastGrowthAt = lastS + cyclesS * VIP_PERIOD_MS;
+        user.transactions.push({id:uid(), kind:"savings_growth", amount: gain, date: now, purpose:"Нарахування на зберігальному рахунку (" + cyclesS + "x, +20%/день)"});
+        changed = true;
+        showToast("Зберігальний рахунок: +" + formatMoney(gain) + " " + CUR, "gold");
+      }
+    }
+
+    if(changed){
+      await saveUser(user);
+      if(state.email === user.email){ state.user = user; render(); }
+    }
+  }
+
+  // ---------- tab bar ----------
+  function renderTabBar(){
+    var bar = document.createElement("div");
+    bar.className = "tabbar";
+    var tabs = [
+      {id:"home", icon:ICONS.home, label:"Головна"},
+      {id:"loan", icon:ICONS.loan, label:"Кредит"},
+      {id:"market", icon:ICONS.market, label:"Маркет"},
+      {id:"profile", icon:ICONS.user, label:"Профіль"}
+    ];
+    tabs.forEach(function(t){
+      var b = document.createElement("button");
+      b.className = "tab-btn" + (state.tab === t.id ? " active" : "");
+      b.innerHTML = t.icon + "<span>" + t.label + "</span>";
+      b.addEventListener("click", function(){ switchTab(t.id); });
+      bar.appendChild(b);
+    });
+    return bar;
+  }
+
+  function topBar(user){
+    var isAdmin = state.email === ADMIN_EMAIL;
+    var div = document.createElement("div");
+    div.className = "topbar";
+    div.innerHTML =
+      '<div class="brand"><div class="mark">' + ICONS.logoMark + '</div><span>' + APP_NAME + '</span></div>' +
+      '<div style="display:flex; align-items:center; gap:8px;">' +
+        '<div class="level-pill"><span class="lv-badge">' + user.level + '</span>Рівень</div>' +
+        (user.vip ? '<div class="vip-pill">' + ICONS.crown + ' VIP</div>' : '') +
+        '<button class="logout-btn" id="logout-btn" title="Вийти">' + ICONS.logout + '</button>' +
+      '</div>';
+    setTimeout(function(){
+      var lb = div.querySelector("#logout-btn");
+      if(lb) lb.addEventListener("click", handleLogout);
+    }, 0);
+    return div;
+  }
+
+  // ---------- home tab ----------
+  function renderHomeTab(){
+    var user = state.user;
+    var isAdmin = state.email === ADMIN_EMAIL;
+    var wrap = document.createElement("div");
+    wrap.className = "screen";
+    wrap.appendChild(topBar(user));
+
+    var rest = document.createElement("div");
+    rest.innerHTML =
+      '<div class="balance-block"><div><div class="balance-label">Баланс</div>' +
+        '<div class="balance-amount"><span id="balance-num">0,00</span><span class="cur">' + CUR + '</span></div></div></div>' +
+
+      '<div class="card-visual">' +
+        '<div class="card-top-row"><div class="chip"></div><div class="card-brand-mark">' + APP_NAME + '</div></div>' +
+        '<div><div class="card-number-row"><div class="card-number num">' + escapeHtml(user.card) + '</div>' +
+        '<button class="copy-btn" id="copy-btn">' + ICONS.copy + '<span id="copy-label">Копія</span></button></div>' +
+        '<div class="card-bottom-row"><div class="card-holder">' + escapeHtml(user.email.split("@")[0]) + ' · демо-картка</div></div></div>' +
+      '</div>' +
+
+      '<div class="actions-row">' +
+        (isAdmin ? '<button class="action-btn" id="topup-open-btn"><div class="icon-wrap">' + ICONS.plus + '</div><span>Поповнити (адмін)</span></button>' : '') +
+        '<button class="action-btn" id="transfer-open-btn"><div class="icon-wrap">' + ICONS.send + '</div><span>Переказ</span></button>' +
+        '<button class="action-btn" id="loan-quick-btn"><div class="icon-wrap">' + ICONS.loan + '</div><span>Кредит</span></button>' +
+        '<button class="action-btn" id="market-quick-btn"><div class="icon-wrap">' + ICONS.market + '</div><span>Маркет</span></button>' +
+      '</div>' +
+
+      (user.loan ? loanCardHtml(user) : '') +
+      ((user.vip || user.mega) ? vipCardHtml(user) : '') +
+      (user.savings && user.savings.balance > 0 ? savingsCardHtml(user) : '') +
+
+      '<div class="sync-note">' + ICONS.globe + '<span>Ігровий email, картка й баланс синхронізовані між пристроями. Це демо-гра — гроші тут не справжні.</span></div>' +
+
+      '<div class="section-label">Історія операцій</div>' +
+      '<div class="tx-list" id="tx-list"></div>';
+    wrap.appendChild(rest);
+
+    setTimeout(function(){ animateBalance(wrap.querySelector("#balance-num"), user.balance); }, 80);
+
+    var txList = wrap.querySelector("#tx-list");
+    var txs = (user.transactions || []).slice().sort(function(a,b){ return b.date - a.date; });
+    if(txs.length === 0){
+      txList.innerHTML = '<div class="empty-tx">Операцій поки немає</div>';
+    } else {
+      txs.slice(0, 40).forEach(function(tx){ txList.appendChild(txItemEl(tx)); });
+    }
+
+    wrap.querySelector("#transfer-open-btn").addEventListener("click", function(){ state.modal = {type:"transfer"}; render(); });
+    wrap.querySelector("#loan-quick-btn").addEventListener("click", function(){ switchTab("loan"); });
+    wrap.querySelector("#market-quick-btn").addEventListener("click", function(){ switchTab("market"); });
+    if(isAdmin){
+      var tb = wrap.querySelector("#topup-open-btn");
+      if(tb) tb.addEventListener("click", function(){ state.modal = {type:"topup"}; render(); });
+    }
+    var savDep = wrap.querySelector("#savings-deposit-btn");
+    if(savDep) savDep.addEventListener("click", function(){ state.modal = {type:"savings", mode:"deposit"}; render(); });
+    var savWd = wrap.querySelector("#savings-withdraw-btn");
+    if(savWd) savWd.addEventListener("click", function(){ state.modal = {type:"savings", mode:"withdraw"}; render(); });
+
+    wrap.querySelector("#copy-btn").addEventListener("click", function(){
+      copyCardNumber(user.card, wrap.querySelector("#copy-btn"), wrap.querySelector("#copy-label"));
+    });
+    return wrap;
+  }
+
+  function txItemEl(tx){
+    var isPositive = tx.amount > 0;
+    var iconHtml = ICONS.txOut, iconClass = "";
+    var title = "";
+    if(tx.kind === "topup"){ iconHtml = ICONS.plus; iconClass = "topup"; title = "Поповнення (адмін)"; }
+    else if(tx.kind === "bonus"){ iconHtml = ICONS.plus; iconClass = "topup"; title = tx.purpose || "Бонус"; }
+    else if(tx.kind === "transfer_out"){ iconHtml = ICONS.txOut; title = "Переказ на картку •" + last4(tx.receiverCard); }
+    else if(tx.kind === "transfer_in"){ iconHtml = ICONS.txIn; title = "Переказ від картки •" + last4(tx.senderCard); }
+    else if(tx.kind === "loan_take"){ iconHtml = ICONS.loan; title = "Отримано кредит"; }
+    else if(tx.kind === "loan_repay"){ iconHtml = ICONS.loan; title = "Погашено кредит"; }
+    else if(tx.kind === "loan_auto"){ iconHtml = ICONS.loan; title = "Автосписання за кредитом"; }
+    else if(tx.kind === "vip_buy"){ iconHtml = ICONS.crown; iconClass = "gold"; title = "Покупка VIP-статусу"; }
+    else if(tx.kind === "vip_payout"){ iconHtml = ICONS.crown; iconClass = "gold"; title = tx.purpose || "VIP виплата"; }
+    else if(tx.kind === "purchase"){ iconHtml = ICONS.market; title = "Покупка: " + (tx.purpose || "товар"); }
+    else if(tx.kind === "sale"){ iconHtml = ICONS.tag; title = "Продаж: " + (tx.purpose || "товар"); }
+    else if(tx.kind === "savings_deposit"){ iconHtml = ICONS.txOut; title = "Поповнення зберігального рахунку"; }
+    else if(tx.kind === "savings_withdraw"){ iconHtml = ICONS.txIn; title = "Зняття зі зберігального рахунку"; }
+    else if(tx.kind === "savings_growth"){ iconHtml = ICONS.plus; iconClass = "topup"; title = tx.purpose || "Нарахування на рахунку"; }
+    else title = isPositive ? "Надходження" : "Списання";
+
+    var item = document.createElement("div");
+    item.className = "tx-item";
+    item.innerHTML =
+      '<div class="tx-icon ' + iconClass + '">' + iconHtml + '</div>' +
+      '<div class="tx-info"><div class="tx-title">' + escapeHtml(title) + '</div><div class="tx-date">' + formatDate(tx.date) + '</div></div>' +
+      '<div class="tx-right"><div class="tx-amount ' + (isPositive ? "pos" : "neg") + '">' + (isPositive ? "+" : "−") + formatMoney(Math.abs(tx.amount)) + ' ' + CUR + '</div>' +
+      '<div class="receipt-chip">' + ICONS.receipt + '</div></div>';
+    item.addEventListener("click", function(){ state.modal = {type:"receipt", tx:tx}; render(); });
+    return item;
+  }
+
+  function loanCardHtml(user){
+    var remain = user.loan.dueAt - Date.now();
+    return '<div class="info-card">' +
+      '<div class="info-card-head"><div class="info-card-title">💳 Активний кредит</div>' +
+      '<div class="prod-price">' + formatMoney(user.loan.amount) + ' ' + CUR + '</div></div>' +
+      '<div class="info-card-sub">Погасіть до закінчення таймера — інакше суму спишуть автоматично.</div>' +
+      '<div class="timer-row"><span style="font-size:12px;color:var(--text-2);">Залишилось часу</span><span class="timer" id="loan-timer-val">' + formatDuration(remain) + '</span></div>' +
+      '<div class="progress-track"><div class="progress-fill" id="loan-progress-fill" style="width:100%"></div></div>' +
+      '</div>';
+  }
+  function vipCardHtml(user){
+    var nextAt = (user.vipLastPayout || user.vipSince || user.megaSince) + VIP_PERIOD_MS;
+    var remain = nextAt - Date.now();
+    var dailyAmt = user.mega ? MEGA_VIP_DAILY_PAYOUT : VIP_DAILY_PAYOUT;
+    return '<div class="info-card">' +
+      '<div class="info-card-head"><div class="info-card-title">' + (user.mega ? "💎 Мега VIP активний" : "👑 VIP-статус активний") + '</div></div>' +
+      '<div class="info-card-sub">Щодня нараховується +' + formatMoney(dailyAmt) + ' ' + CUR + ' автоматично.</div>' +
+      '<div class="timer-row"><span style="font-size:12px;color:var(--text-2);">До наступної виплати</span><span class="timer" id="vip-timer-val" style="color:#e6c878;">' + (remain>0?formatDuration(remain):"Готово") + '</span></div>' +
+      '</div>';
+  }
+  function savingsCardHtml(user){
+    var s = user.savings;
+    var nextAt = (s.lastGrowthAt || Date.now()) + VIP_PERIOD_MS;
+    var remain = nextAt - Date.now();
+    return '<div class="info-card">' +
+      '<div class="info-card-head"><div class="info-card-title">🏦 Зберігальний рахунок</div>' +
+      '<div class="prod-price">' + formatMoney(s.balance) + ' ' + CUR + '</div></div>' +
+      '<div class="info-card-sub">Зростає на +20% щодня, поки лежить на рахунку.</div>' +
+      '<div class="timer-row"><span style="font-size:12px;color:var(--text-2);">До наступного нарахування</span><span class="timer" id="savings-timer-val" style="color:#7fd68a;">' + (remain>0?formatDuration(remain):"Готово") + '</span></div>' +
+      '<div style="display:flex; gap:8px; margin-top:12px;">' +
+        '<button class="btn btn-ghost btn-sm" id="savings-deposit-btn" style="flex:1;">Поповнити</button>' +
+        '<button class="btn btn-ghost btn-sm" id="savings-withdraw-btn" style="flex:1;">Зняти</button>' +
+      '</div></div>';
+  }
+
+  function animateBalance(el, target){
+    var start = 0, duration = 700, startTime = null;
+    function step(ts){
+      if(!startTime) startTime = ts;
+      var progress = Math.min((ts - startTime) / duration, 1);
+      var eased = 1 - Math.pow(1 - progress, 3);
+      el.textContent = formatMoney(start + (target - start) * eased);
+      if(progress < 1) requestAnimationFrame(step); else el.textContent = formatMoney(target);
+    }
+    requestAnimationFrame(step);
+  }
+
+  function copyCardNumber(card, btn, label){
+    var text = card.replace(/\s/g,"");
+    function done(){
+      var original = label.textContent;
+      btn.innerHTML = ICONS.check + '<span>Скопійовано</span>';
+      showToast("Номер картки скопійовано");
+      setTimeout(function(){ btn.innerHTML = ICONS.copy + '<span>' + original + '</span>'; }, 1600);
+    }
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text).then(done).catch(function(){ fallbackCopy(text); done(); });
+    } else { fallbackCopy(text); done(); }
+  }
+  function fallbackCopy(text){
+    var ta = document.createElement("textarea");
+    ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0";
+    document.body.appendChild(ta); ta.select();
+    try{ document.execCommand("copy"); }catch(e){}
+    document.body.removeChild(ta);
+  }
+
+  function handleLogout(){
+    if(state.timerHandle) clearInterval(state.timerHandle);
+    if(state.payoutCheckHandle) clearInterval(state.payoutCheckHandle);
+    setSession(null);
+    state.email = null; state.user = null; state.screen = "email"; state.modal = null; state.tab = "home";
+    render();
+  }
+
+  // ---------- loan tab ----------
+  function renderLoanTab(){
+    var user = state.user;
+    var wrap = document.createElement("div");
+    wrap.className = "screen";
+    wrap.appendChild(topBar(user));
+
+    var maxLoan = maxLoanForLevel(user.level);
+    var xpIntoLevel = (user.xp || 0) % XP_PER_LEVEL;
+    var xpLeft = XP_PER_LEVEL - xpIntoLevel;
+
+    var body = document.createElement("div");
+    body.innerHTML =
+      '<div class="section-label" style="margin-top:20px;">Кредитна лінія</div>' +
+      '<div class="info-card">' +
+        '<div class="info-card-title">Ваш ліміт: ' + formatMoney(maxLoan) + ' ' + CUR + '</div>' +
+        '<div class="info-card-sub">Рівень ' + user.level + ' · ліміт росте з рівнем, максимум ' + formatMoney(MAX_LOAN_CAP) + ' ' + CUR + '. Термін погашення — 3 дні. Прострочення = автосписання з балансу.</div>' +
+        (user.loan ? loanCardHtml(user) :
+          '<button class="btn btn-primary" id="take-loan-btn" style="margin-top:14px;">Взяти кредит</button>') +
+        (user.loan ? '<button class="btn btn-ghost" id="repay-loan-btn" style="margin-top:10px;">Сплатити кредит достроково</button>' : '') +
+      '</div>' +
+      '<div class="info-card">' +
+        '<div class="info-card-title">Прогрес рівня</div>' +
+        '<div class="info-card-sub">Досвід: ' + (user.xp||0) + ' XP · до наступного рівня ще ' + xpLeft + ' XP. Досвід дають погашення кредитів, покупки, продажі та перекази.</div>' +
+      '</div>';
+    wrap.appendChild(body);
+    wrap.appendChild(renderTabBar());
+
+    var takeBtn = body.querySelector("#take-loan-btn");
+    if(takeBtn) takeBtn.addEventListener("click", function(){ state.modal = {type:"loan"}; render(); });
+    var repayBtn = body.querySelector("#repay-loan-btn");
+    if(repayBtn) repayBtn.addEventListener("click", function(){ repayLoan(); });
+
+    return wrap;
+  }
+
+  async function repayLoan(){
+    var user = await getUser(state.email);
+    if(!user || !user.loan){ showToast("Активного кредиту немає", "error"); return; }
+    if(user.balance < user.loan.amount){
+      showToast("Недостатньо коштів для дострокового погашення", "error"); return;
+    }
+    var amt = user.loan.amount;
+    user.balance = Math.round((user.balance - amt) * 100) / 100;
+    user.transactions.push({id:uid(), kind:"loan_repay", amount:-amt, date: Date.now(), purpose:"Дострокове погашення"});
+    user.loanRepaid = (user.loanRepaid || 0) + 1;
+    var levelBefore = user.level;
+    addXp(user, "loan_repay");
+    if(user.level > levelBefore){
+      showToast("Рівень підвищено до " + user.level + "! Новий ліміт кредиту: " + formatMoney(maxLoanForLevel(user.level)) + " " + CUR, "gold");
+    }
+    user.loan = null;
+    await saveUser(user);
+    state.user = user;
+    render();
+    showToast("Кредит погашено");
+  }
+
+  function renderLoanModal(){
+    var user = state.user;
+    var maxLoan = maxLoanForLevel(user.level);
+    var overlay = document.createElement("div");
+    overlay.className = "overlay";
+    var modal = document.createElement("div");
+    modal.className = "modal";
+    modal.innerHTML =
+      '<div class="modal-handle"></div>' +
+      '<div class="modal-header"><h2>Взяти кредит</h2><button class="close-x" id="modal-close">&times;</button></div>' +
+      '<div class="info-card-sub" style="margin-bottom:14px;">Доступно до ' + formatMoney(maxLoan) + ' ' + CUR + ' (рівень ' + user.level + '). Погашення протягом 3 днів.</div>' +
+      '<div class="field"><div class="field-label">Сума кредиту</div>' +
+      '<input type="number" id="loan-amount" placeholder="0" inputmode="decimal" min="1" max="' + maxLoan + '" step="1">' +
+      '<div class="chip-row" id="loan-chips"></div></div>' +
+      '<div class="err-msg" id="loan-error"></div>' +
+      '<button class="btn btn-primary" id="loan-submit"><span id="loan-submit-label">Отримати кредит</span></button>';
+    overlay.appendChild(modal);
+
+    var chipsRow = modal.querySelector("#loan-chips");
+    var options = [Math.round(maxLoan*0.25), Math.round(maxLoan*0.5), Math.round(maxLoan*0.75), maxLoan].filter(function(v,i,a){ return v>0 && a.indexOf(v)===i; });
+    var input = modal.querySelector("#loan-amount");
+    options.forEach(function(v){
+      var chip = document.createElement("div");
+      chip.className = "amount-chip";
+      chip.textContent = formatMoney(v) + " " + CUR;
+      chip.addEventListener("click", function(){ input.value = v; });
+      chipsRow.appendChild(chip);
+    });
+
+    var errEl = modal.querySelector("#loan-error");
+    var submitBtn = modal.querySelector("#loan-submit");
+    var submitLabel = modal.querySelector("#loan-submit-label");
+
+    overlay.addEventListener("click", function(e){ if(e.target === overlay) closeModal(); });
+    modal.querySelector("#modal-close").addEventListener("click", closeModal);
+    input.addEventListener("input", function(){ errEl.textContent = ""; });
+
+    submitBtn.addEventListener("click", async function(){
+      var amount = parseFloat(input.value);
+      if(!amount || amount <= 0){ errEl.textContent = "Введіть суму кредиту"; return; }
+
+      submitBtn.disabled = true; input.disabled = true;
+      submitLabel.innerHTML = '<span class="spinner"></span>';
+
+      var user2 = await getUser(state.email);
+      if(!user2){ showToast("Помилка синхронізації", "error"); closeModal(); return; }
+
+      // Re-check against the freshest known level/limit, not a stale value
+      // captured when the modal first opened.
+      var freshMax = maxLoanForLevel(user2.level);
+      if(amount > freshMax + 0.005){
+        errEl.textContent = "Максимум для вашого рівня (" + user2.level + "): " + formatMoney(freshMax) + " " + CUR;
+        submitBtn.disabled=false; input.disabled=false; submitLabel.textContent="Отримати кредит"; return;
+      }
+      if(user2.loan){ errEl.textContent = "У вас вже є активний кредит"; submitBtn.disabled=false; input.disabled=false; submitLabel.textContent="Отримати кредит"; return; }
+
+      var now = Date.now();
+      user2.loan = {amount: amount, takenAt: now, dueAt: now + LOAN_TERM_MS};
+      user2.balance = Math.round((user2.balance + amount) * 100) / 100;
+      user2.transactions.push({id:uid(), kind:"loan_take", amount: amount, date: now, purpose:"Кредит на 3 дні"});
+
+      var ok = await saveUser(user2);
+      if(!ok){ showToast("Не вдалося оформити кредит", "error"); submitBtn.disabled=false; input.disabled=false; submitLabel.textContent="Отримати кредит"; return; }
+
+      state.user = user2;
+      closeModal();
+      showToast("Кредит " + formatMoney(amount) + " " + CUR + " зараховано. Погасіть протягом 3 днів");
+    });
+
+    setTimeout(function(){ input.focus(); }, 300);
+    return overlay;
+  }
+
+  // ---------- profile tab (VIP) ----------
+  function renderProfileTab(){
+    var user = state.user;
+    var wrap = document.createElement("div");
+    wrap.className = "screen";
+    wrap.appendChild(topBar(user));
+
+    var body = document.createElement("div");
+    body.innerHTML =
+      '<div class="section-label" style="margin-top:20px;">Профіль</div>' +
+      '<div class="info-card"><div class="info-card-title">' + escapeHtml(user.email) + '</div>' +
+      '<div class="info-card-sub">Картка: ' + escapeHtml(user.card) + '<br>Рівень: ' + user.level + ' (XP: ' + (user.xp||0) + ') · Кредитний ліміт: ' + formatMoney(maxLoanForLevel(user.level)) + ' ' + CUR + '<br>Погашено кредитів: ' + user.loanRepaid + '</div></div>' +
+
+      ((user.vip || user.mega) ? vipCardHtml(user) :
+        '<div class="info-card">' +
+          '<div class="info-card-head"><div class="info-card-title">👑 VIP-статус</div><div class="prod-price">' + formatMoney(VIP_COST) + ' ' + CUR + '</div></div>' +
+          '<div class="info-card-sub">Одноразова покупка. Поки активний — щодня автоматично +' + formatMoney(VIP_DAILY_PAYOUT) + ' ' + CUR + ' на баланс.</div>' +
+          '<button class="btn btn-gold" id="buy-vip-btn" style="margin-top:14px;">' + ICONS.crown + ' Купити VIP</button>' +
+        '</div>') +
+
+      (user.mega ? '' :
+        '<div class="info-card">' +
+          '<div class="info-card-head"><div class="info-card-title">💎 Мега VIP</div><div class="prod-price">' + formatMoney(MEGA_VIP_COST) + ' ' + CUR + '</div></div>' +
+          '<div class="info-card-sub">Одразу +' + MEGA_VIP_LEVEL_BONUS + ' рівнів та щоденна виплата +' + formatMoney(MEGA_VIP_DAILY_PAYOUT) + ' ' + CUR + ' (замінює звичайну VIP-виплату).</div>' +
+          '<button class="btn btn-gold" id="buy-mega-btn" style="margin-top:14px;">💎 Купити Мега VIP</button>' +
+        '</div>') +
+
+      '<div class="info-card">' +
+        '<div class="info-card-head"><div class="info-card-title">🏦 Зберігальний рахунок</div>' +
+        '<div class="prod-price">' + formatMoney((user.savings && user.savings.balance) || 0) + ' ' + CUR + '</div></div>' +
+        '<div class="info-card-sub">Покладіть кошти — вони зростатимуть на +20% щодня, доки лежать на рахунку.</div>' +
+        '<div style="display:flex; gap:8px; margin-top:14px;">' +
+          '<button class="btn btn-ghost btn-sm" id="profile-savings-deposit-btn" style="flex:1;">Поповнити</button>' +
+          '<button class="btn btn-ghost btn-sm" id="profile-savings-withdraw-btn" style="flex:1;">Зняти</button>' +
+        '</div></div>' +
+
+      '<div class="info-card"><div class="info-card-title">Про гру</div>' +
+      '<div class="info-card-sub">NOVA PLAY — демонстраційний застосунок. Усі кошти, кредити, VIP-виплати та зберігальний рахунок віртуальні й існують лише в межах гри. Це не фінансова послуга.</div></div>';
+    wrap.appendChild(body);
+    wrap.appendChild(renderTabBar());
+
+    var vipBtn = body.querySelector("#buy-vip-btn");
+    if(vipBtn) vipBtn.addEventListener("click", function(){ state.modal = {type:"vip"}; render(); });
+    var megaBtn = body.querySelector("#buy-mega-btn");
+    if(megaBtn) megaBtn.addEventListener("click", function(){ state.modal = {type:"mega"}; render(); });
+    var sd = body.querySelector("#profile-savings-deposit-btn");
+    if(sd) sd.addEventListener("click", function(){ state.modal = {type:"savings", mode:"deposit"}; render(); });
+    var sw = body.querySelector("#profile-savings-withdraw-btn");
+    if(sw) sw.addEventListener("click", function(){ state.modal = {type:"savings", mode:"withdraw"}; render(); });
+
+    return wrap;
+  }
+
+  function renderVipModal(){
+    var user = state.user;
+    var overlay = document.createElement("div");
+    overlay.className = "overlay";
+    var modal = document.createElement("div");
+    modal.className = "modal";
+    modal.innerHTML =
+      '<div class="modal-handle"></div>' +
+      '<div class="modal-header"><h2>' + ICONS.crown + ' VIP-статус</h2><button class="close-x" id="modal-close">&times;</button></div>' +
+      '<div class="info-card-sub" style="margin-bottom:16px;">Вартість: ' + formatMoney(VIP_COST) + ' ' + CUR + ' (одноразово). Після покупки щодня автоматично нараховується +' + formatMoney(VIP_DAILY_PAYOUT) + ' ' + CUR + '.</div>' +
+      '<div class="err-msg" id="vip-error"></div>' +
+      '<button class="btn btn-gold" id="vip-submit"><span id="vip-submit-label">Купити за ' + formatMoney(VIP_COST) + ' ' + CUR + '</span></button>';
+    overlay.appendChild(modal);
+
+    var errEl = modal.querySelector("#vip-error");
+    var submitBtn = modal.querySelector("#vip-submit");
+    var submitLabel = modal.querySelector("#vip-submit-label");
+
+    overlay.addEventListener("click", function(e){ if(e.target === overlay) closeModal(); });
+    modal.querySelector("#modal-close").addEventListener("click", closeModal);
+
+    submitBtn.addEventListener("click", async function(){
+      var fresh = await getUser(state.email);
+      if(!fresh){ showToast("Помилка синхронізації", "error"); closeModal(); return; }
+      if(fresh.vip){ showToast("VIP вже активний"); closeModal(); return; }
+      if(fresh.balance < VIP_COST){ errEl.textContent = "Недостатньо коштів"; return; }
+
+      submitBtn.disabled = true; submitLabel.innerHTML = '<span class="spinner"></span>';
+
+      var now = Date.now();
+      fresh.balance = Math.round((fresh.balance - VIP_COST) * 100) / 100;
+      fresh.vip = true; fresh.vipSince = now; fresh.vipLastPayout = now;
+      fresh.transactions.push({id:uid(), kind:"vip_buy", amount:-VIP_COST, date: now, purpose:"Покупка VIP-статусу"});
+
+      var ok = await saveUser(fresh);
+      if(!ok){ showToast("Не вдалося оформити VIP", "error"); submitBtn.disabled=false; submitLabel.textContent="Купити за " + formatMoney(VIP_COST) + " " + CUR; return; }
+
+      state.user = fresh;
+      closeModal();
+      showToast("VIP активовано! Виплати почнуться за 24 год", "gold");
+    });
+
+    return overlay;
+  }
+
+  // ---------- mega vip modal ----------
+  function renderMegaVipModal(){
+    var overlay = document.createElement("div");
+    overlay.className = "overlay";
+    var modal = document.createElement("div");
+    modal.className = "modal";
+    modal.innerHTML =
+      '<div class="modal-handle"></div>' +
+      '<div class="modal-header"><h2>💎 Мега VIP</h2><button class="close-x" id="modal-close">&times;</button></div>' +
+      '<div class="info-card-sub" style="margin-bottom:16px;">Вартість: ' + formatMoney(MEGA_VIP_COST) + ' ' + CUR + ' (одноразово). Дає одразу +' + MEGA_VIP_LEVEL_BONUS + ' рівнів та щоденну виплату +' + formatMoney(MEGA_VIP_DAILY_PAYOUT) + ' ' + CUR + ' замість звичайної VIP-виплати.</div>' +
+      '<div class="err-msg" id="mega-error"></div>' +
+      '<button class="btn btn-gold" id="mega-submit"><span id="mega-submit-label">Купити за ' + formatMoney(MEGA_VIP_COST) + ' ' + CUR + '</span></button>';
+    overlay.appendChild(modal);
+
+    var errEl = modal.querySelector("#mega-error");
+    var submitBtn = modal.querySelector("#mega-submit");
+    var submitLabel = modal.querySelector("#mega-submit-label");
+
+    overlay.addEventListener("click", function(e){ if(e.target === overlay) closeModal(); });
+    modal.querySelector("#modal-close").addEventListener("click", closeModal);
+
+    submitBtn.addEventListener("click", async function(){
+      var fresh = await getUser(state.email);
+      if(!fresh){ showToast("Помилка синхронізації", "error"); closeModal(); return; }
+      if(fresh.mega){ showToast("Мега VIP вже активний"); closeModal(); return; }
+      if(fresh.balance < MEGA_VIP_COST){ errEl.textContent = "Недостатньо коштів"; return; }
+
+      submitBtn.disabled = true; submitLabel.innerHTML = '<span class="spinner"></span>';
+
+      var now = Date.now();
+      fresh.balance = Math.round((fresh.balance - MEGA_VIP_COST) * 100) / 100;
+      fresh.mega = true; fresh.megaSince = now;
+      fresh.megaLevelBonus = (fresh.megaLevelBonus || 0) + MEGA_VIP_LEVEL_BONUS;
+      fresh.level = levelFromXp(fresh.xp) + fresh.megaLevelBonus;
+      if(!fresh.vip){ fresh.vip = true; fresh.vipSince = now; } // mega includes vip-tier perks
+      fresh.vipLastPayout = now;
+      fresh.transactions.push({id:uid(), kind:"vip_buy", amount:-MEGA_VIP_COST, date: now, purpose:"Покупка Мега VIP (+" + MEGA_VIP_LEVEL_BONUS + " рівнів)"});
+
+      var ok = await saveUser(fresh);
+      if(!ok){ showToast("Не вдалося оформити Мега VIP", "error"); submitBtn.disabled=false; submitLabel.textContent="Купити за " + formatMoney(MEGA_VIP_COST) + " " + CUR; return; }
+
+      state.user = fresh;
+      closeModal();
+      showToast("Мега VIP активовано! +" + MEGA_VIP_LEVEL_BONUS + " рівнів, новий ліміт кредиту: " + formatMoney(maxLoanForLevel(fresh.level)) + " " + CUR, "gold");
+    });
+
+    return overlay;
+  }
+
+  // ---------- savings modal ----------
+  function renderSavingsModal(){
+    var mode = (state.modal && state.modal.mode) || "deposit";
+    var overlay = document.createElement("div");
+    overlay.className = "overlay";
+    var modal = document.createElement("div");
+    modal.className = "modal";
+    modal.innerHTML =
+      '<div class="modal-handle"></div>' +
+      '<div class="modal-header"><h2>🏦 ' + (mode==="deposit" ? "Поповнити рахунок" : "Зняти з рахунку") + '</h2><button class="close-x" id="modal-close">&times;</button></div>' +
+      '<div class="info-card-sub" style="margin-bottom:16px;">' + (mode==="deposit" ? "Кошти на зберігальному рахунку зростають на +20% щодня." : "Переказати кошти назад на основний баланс.") + '</div>' +
+      '<div class="field"><div class="field-label">Сума</div><input type="number" id="sav-amount" placeholder="0" inputmode="decimal" min="0" step="0.01"></div>' +
+      '<div class="err-msg" id="sav-error"></div>' +
+      '<button class="btn btn-primary" id="sav-submit"><span id="sav-submit-label">' + (mode==="deposit" ? "Покласти на рахунок" : "Зняти на баланс") + '</span></button>';
+    overlay.appendChild(modal);
+
+    var amountInput = modal.querySelector("#sav-amount");
+    var errEl = modal.querySelector("#sav-error");
+    var submitBtn = modal.querySelector("#sav-submit");
+    var submitLabel = modal.querySelector("#sav-submit-label");
+
+    overlay.addEventListener("click", function(e){ if(e.target === overlay) closeModal(); });
+    modal.querySelector("#modal-close").addEventListener("click", closeModal);
+    amountInput.addEventListener("input", function(){ errEl.textContent = ""; });
+
+    submitBtn.addEventListener("click", async function(){
+      var amount = parseFloat(amountInput.value);
+      if(!amount || amount <= 0){ errEl.textContent = "Введіть суму"; return; }
+
+      submitBtn.disabled = true; amountInput.disabled = true; submitLabel.innerHTML = '<span class="spinner"></span>';
+      var fresh = await getUser(state.email);
+      if(!fresh){ showToast("Помилка синхронізації", "error"); closeModal(); return; }
+      if(!fresh.savings) fresh.savings = {balance:0, lastGrowthAt:null};
+
+      var now = Date.now();
+      if(mode === "deposit"){
+        if(fresh.balance < amount){ errEl.textContent = "Недостатньо коштів на балансі"; submitBtn.disabled=false; amountInput.disabled=false; submitLabel.textContent="Покласти на рахунок"; return; }
+        fresh.balance = Math.round((fresh.balance - amount) * 100) / 100;
+        fresh.savings.balance = Math.round((fresh.savings.balance + amount) * 100) / 100;
+        if(!fresh.savings.lastGrowthAt) fresh.savings.lastGrowthAt = now;
+        fresh.transactions.push({id:uid(), kind:"savings_deposit", amount:-amount, date: now, purpose:"Поповнення зберігального рахунку"});
+      } else {
+        if(fresh.savings.balance < amount){ errEl.textContent = "Недостатньо коштів на зберігальному рахунку"; submitBtn.disabled=false; amountInput.disabled=false; submitLabel.textContent="Зняти на баланс"; return; }
+        fresh.savings.balance = Math.round((fresh.savings.balance - amount) * 100) / 100;
+        fresh.balance = Math.round((fresh.balance + amount) * 100) / 100;
+        fresh.transactions.push({id:uid(), kind:"savings_withdraw", amount: amount, date: now, purpose:"Зняття зі зберігального рахунку"});
+      }
+
+      var ok = await saveUser(fresh);
+      if(!ok){ showToast("Не вдалося виконати операцію", "error"); submitBtn.disabled=false; amountInput.disabled=false; submitLabel.textContent = mode==="deposit"?"Покласти на рахунок":"Зняти на баланс"; return; }
+
+      state.user = fresh;
+      closeModal();
+      showToast(mode === "deposit" ? "Кошти покладено на рахунок" : "Кошти знято на баланс");
+    });
+
+    setTimeout(function(){ amountInput.focus(); }, 300);
+    return overlay;
+  }
+
+  // ---------- market tab ----------
+  function renderMarketTab(){
+    var user = state.user;
+    var wrap = document.createElement("div");
+    wrap.className = "screen";
+    wrap.appendChild(topBar(user));
+
+    var body = document.createElement("div");
+    body.innerHTML =
+      '<div class="section-label" style="margin-top:20px; margin-bottom:0;">NOVA Маркет <button class="btn-sm btn-ghost" id="sell-open-btn" style="width:auto;">+ Продати</button></div>' +
+      '<div class="market-tabs">' +
+        '<div class="mtab' + (state.marketTab==="catalog"?" active":"") + '" data-tab="catalog">Каталог</div>' +
+        '<div class="mtab' + (state.marketTab==="community"?" active":"") + '" data-tab="community">Від гравців</div>' +
+        '<div class="mtab' + (state.marketTab==="mine"?" active":"") + '" data-tab="mine">Мої оголошення</div>' +
+      '</div>' +
+      '<div id="market-content"></div>';
+    wrap.appendChild(body);
+    wrap.appendChild(renderTabBar());
+
+    body.querySelector("#sell-open-btn").addEventListener("click", function(){ state.modal = {type:"sell"}; render(); });
+    body.querySelectorAll(".mtab").forEach(function(el){
+      el.addEventListener("click", function(){ state.marketTab = el.getAttribute("data-tab"); render(); });
+    });
+
+    loadMarketContent(body.querySelector("#market-content"));
+    return wrap;
+  }
+
+  async function loadMarketContent(container){
+    container.innerHTML = '<div class="empty-state" style="padding:30px 10px;"><span class="spinner dark" style="display:inline-block;"></span></div>';
+    if(state.marketTab === "catalog"){
+      var grid = document.createElement("div");
+      grid.className = "grid";
+      CATALOG.forEach(function(p){
+        grid.appendChild(productCardEl({
+          name: p.name, price: p.price, emoji: p.emoji, sellerLabel: "NOVA Маркет",
+          onBuy: function(qty){ buyCatalogItem(p, qty); }
+        }));
+      });
+      container.innerHTML = ""; container.appendChild(grid);
+      return;
+    }
+
+    var all = await getAllListings(state.marketTab === "mine");
+    if(state.marketTab === "community"){
+      var mine = state.email;
+      var others = all.filter(function(l){ return l.sellerEmail !== mine; });
+      container.innerHTML = "";
+      var grid2 = document.createElement("div");
+      grid2.className = "grid";
+      if(others.length === 0){
+        grid2.innerHTML = '<div class="empty-state">Поки що немає оголошень від інших гравців</div>';
+      } else {
+        others.forEach(function(l){
+          grid2.appendChild(productCardEl({
+            name: l.title, price: l.price, emoji: "📦", sellerLabel: l.sellerEmail.split("@")[0],
+            onBuy: function(qty){ buyListing(l, qty); }
+          }));
+        });
+      }
+      container.appendChild(grid2);
+    } else if(state.marketTab === "mine"){
+      var myListings = all.filter(function(l){ return l.sellerEmail === state.email; });
+      container.innerHTML = "";
+      if(myListings.length === 0){
+        container.innerHTML = '<div class="empty-state">У вас ще немає оголошень. Натисніть «+ Продати», щоб виставити товар.</div>';
+      } else {
+        myListings.forEach(function(l){
+          var row = document.createElement("div");
+          row.className = "my-listing";
+          row.innerHTML = '<div class="info"><div class="title">' + escapeHtml(l.title) + '</div><div class="price">' + formatMoney(l.price) + ' ' + CUR + '</div></div>' +
+            '<button class="del-btn" title="Видалити">&times;</button>';
+          row.querySelector(".del-btn").addEventListener("click", async function(){
+            await deleteListing(l.id);
+            showToast("Оголошення видалено");
+            render();
+          });
+          container.appendChild(row);
+        });
+      }
+    }
+  }
+
+  function productCardEl(opts){
+    var qty = 1;
+    var card = document.createElement("div");
+    card.className = "prod-card";
+    card.innerHTML =
+      '<div class="prod-emoji">' + opts.emoji + '</div>' +
+      '<div class="prod-name">' + escapeHtml(opts.name) + '</div>' +
+      '<div class="prod-seller">' + escapeHtml(opts.sellerLabel) + '</div>' +
+      '<div class="prod-price" id="prod-total">' + formatMoney(opts.price) + ' ' + CUR + '</div>' +
+      '<div style="display:flex; align-items:center; justify-content:space-between; gap:6px;">' +
+        '<button class="prod-buy" id="qty-minus" style="width:30px; padding:8px 0;">−</button>' +
+        '<span class="num" id="qty-val" style="font-size:13px; font-weight:700; min-width:18px; text-align:center;">1</span>' +
+        '<button class="prod-buy" id="qty-plus" style="width:30px; padding:8px 0;">+</button>' +
+      '</div>' +
+      '<button class="prod-buy" id="prod-buy-btn">Купити</button>';
+
+    var totalEl = card.querySelector("#prod-total");
+    var qtyEl = card.querySelector("#qty-val");
+    function refreshTotal(){
+      qtyEl.textContent = String(qty);
+      totalEl.textContent = formatMoney(opts.price * qty) + " " + CUR;
+    }
+    card.querySelector("#qty-minus").addEventListener("click", function(){ if(qty>1){ qty--; refreshTotal(); } });
+    card.querySelector("#qty-plus").addEventListener("click", function(){ if(qty<99){ qty++; refreshTotal(); } });
+    card.querySelector("#prod-buy-btn").addEventListener("click", function(){ opts.onBuy(qty); });
+    return card;
+  }
+
+  async function buyCatalogItem(product, qty){
+    qty = Math.max(1, Math.round(qty || 1));
+    var total = Math.round(product.price * qty * 100) / 100;
+    var user = await getUser(state.email);
+    if(!user){ showToast("Помилка синхронізації", "error"); return; }
+    if(user.balance < total){ showToast("Недостатньо коштів", "error"); return; }
+    user.balance = Math.round((user.balance - total) * 100) / 100;
+    var label = qty > 1 ? (product.name + " ×" + qty) : product.name;
+    user.transactions.push({id:uid(), kind:"purchase", amount:-total, date: Date.now(), purpose: label});
+    addXp(user, "purchase");
+    var ok = await saveUser(user);
+    if(!ok){ showToast("Не вдалося купити товар", "error"); return; }
+    state.user = user;
+    showToast("Куплено: " + label);
+    render();
+  }
+
+  async function buyListing(listing, qty){
+    qty = Math.max(1, Math.round(qty || 1));
+    var total = Math.round(listing.price * qty * 100) / 100;
+    var buyer = await getUser(state.email);
+    if(!buyer){ showToast("Помилка синхронізації", "error"); return; }
+    if(buyer.balance < total){ showToast("Недостатньо коштів", "error"); return; }
+
+    var fresh = await getListing(listing.id);
+    if(!fresh){ showToast("Оголошення вже недоступне", "error"); render(); return; }
+
+    var seller = await getUser(listing.sellerEmail);
+    if(!seller){ showToast("Продавця не знайдено", "error"); return; }
+
+    var label = qty > 1 ? (listing.title + " ×" + qty) : listing.title;
+    buyer.balance = Math.round((buyer.balance - total) * 100) / 100;
+    seller.balance = Math.round((seller.balance + total) * 100) / 100;
+    var now = Date.now();
+    buyer.transactions.push({id:uid(), kind:"purchase", amount:-total, date: now, purpose: label + " (від " + seller.email.split("@")[0] + ")"});
+    seller.transactions.push({id:uid(), kind:"sale", amount:total, date: now, purpose: label});
+    addXp(buyer, "purchase");
+    addXp(seller, "sale");
+
+    await saveUser(buyer);
+    await saveUser(seller);
+    await deleteListing(listing.id);
+
+    state.user = buyer;
+    showToast("Куплено: " + listing.title);
+    render();
+  }
+
+  function renderSellModal(){
+    var overlay = document.createElement("div");
+    overlay.className = "overlay";
+    var modal = document.createElement("div");
+    modal.className = "modal";
+    modal.innerHTML =
+      '<div class="modal-handle"></div>' +
+      '<div class="modal-header"><h2>Виставити товар</h2><button class="close-x" id="modal-close">&times;</button></div>' +
+      '<div class="field"><div class="field-label">Назва товару</div><input type="text" id="sell-title" placeholder="Напр. Велосипед" maxlength="60"></div>' +
+      '<div class="field"><div class="field-label">Ціна (' + CUR + ')</div><input type="number" id="sell-price" placeholder="0" inputmode="decimal" min="1" step="1"></div>' +
+      '<div class="err-msg" id="sell-error"></div>' +
+      '<button class="btn btn-primary" id="sell-submit"><span id="sell-submit-label">Виставити на продаж</span></button>';
+    overlay.appendChild(modal);
+
+    var titleInput = modal.querySelector("#sell-title");
+    var priceInput = modal.querySelector("#sell-price");
+    var errEl = modal.querySelector("#sell-error");
+    var submitBtn = modal.querySelector("#sell-submit");
+    var submitLabel = modal.querySelector("#sell-submit-label");
+
+    overlay.addEventListener("click", function(e){ if(e.target === overlay) closeModal(); });
+    modal.querySelector("#modal-close").addEventListener("click", closeModal);
+
+    submitBtn.addEventListener("click", async function(){
+      var title = titleInput.value.trim();
+      var price = parseFloat(priceInput.value);
+      if(!title){ errEl.textContent = "Введіть назву товару"; return; }
+      if(!price || price <= 0){ errEl.textContent = "Введіть коректну ціну"; return; }
+
+      submitBtn.disabled = true; submitLabel.innerHTML = '<span class="spinner"></span>';
+      var listing = {id: uid(), sellerEmail: state.email, title: title, price: price, createdAt: Date.now()};
+      var ok = await saveListing(listing);
+      if(!ok){ showToast("Не вдалося виставити товар", "error"); submitBtn.disabled=false; submitLabel.textContent="Виставити на продаж"; return; }
+
+      state.modal = null;
+      state.marketTab = "mine";
+      showToast("Товар виставлено на продаж");
+      render();
+    });
+
+    setTimeout(function(){ titleInput.focus(); }, 300);
+    return overlay;
+  }
+
+  // ---------- transfer modal ----------
+  function renderTransferModal(){
+    var overlay = document.createElement("div");
+    overlay.className = "overlay";
+    var modal = document.createElement("div");
+    modal.className = "modal";
+    modal.innerHTML =
+      '<div class="modal-handle"></div>' +
+      '<div class="modal-header"><h2>Переказ на картку</h2><button class="close-x" id="modal-close">&times;</button></div>' +
+      '<div class="field"><div class="field-label">Номер картки отримувача</div>' +
+      '<input type="text" id="tr-card" class="num" placeholder="0000 0000 0000 0000" inputmode="numeric" maxlength="19"></div>' +
+      '<div class="field"><div class="field-label">Сума</div>' +
+      '<input type="number" id="tr-amount" placeholder="0" inputmode="decimal" min="0" step="0.01"></div>' +
+      '<div class="err-msg" id="tr-error"></div>' +
+      '<button class="btn btn-primary" id="tr-submit" style="margin-top:8px;"><span id="tr-submit-label">Переказати</span></button>';
+    overlay.appendChild(modal);
+
+    var cardInput = modal.querySelector("#tr-card");
+    var amountInput = modal.querySelector("#tr-amount");
+    var errEl = modal.querySelector("#tr-error");
+    var submitBtn = modal.querySelector("#tr-submit");
+    var submitLabel = modal.querySelector("#tr-submit-label");
+
+    cardInput.addEventListener("input", function(){
+      var digits = cardDigitsOnly(cardInput.value).slice(0,16);
+      cardInput.value = digits.replace(/(.{4})/g,"$1 ").trim();
+      errEl.textContent = ""; cardInput.classList.remove("error");
+    });
+    amountInput.addEventListener("input", function(){ errEl.textContent = ""; amountInput.classList.remove("error"); });
+
+    overlay.addEventListener("click", function(e){ if(e.target === overlay) closeModal(); });
+    modal.querySelector("#modal-close").addEventListener("click", closeModal);
+
+    submitBtn.addEventListener("click", async function(){
+      errEl.textContent = ""; cardInput.classList.remove("error"); amountInput.classList.remove("error");
+      var cardDigits = cardDigitsOnly(cardInput.value);
+      var amount = parseFloat(amountInput.value);
+
+      if(cardDigits.length !== 16){ errEl.textContent = "Введіть коректний номер картки (16 цифр)"; cardInput.classList.add("error"); return; }
+      if(!amount || amount <= 0){ errEl.textContent = "Введіть суму переказу"; amountInput.classList.add("error"); return; }
+      if(cardDigits === state.user.card.replace(/\s/g,"")){ errEl.textContent = "Не можна переказати кошти самому собі"; return; }
+
+      submitBtn.disabled = true; cardInput.disabled = true; amountInput.disabled = true;
+      submitLabel.innerHTML = '<span class="spinner"></span>';
+
+      var sender = await getUser(state.email);
+      if(!sender){ showToast("Помилка синхронізації", "error"); closeModal(); return; }
+      if(amount > sender.balance){
+        errEl.textContent = "Недостатньо коштів";
+        submitBtn.disabled=false; cardInput.disabled=false; amountInput.disabled=false; submitLabel.textContent="Переказати"; return;
+      }
+      var receiverEmail = await getCardOwnerEmail(cardDigits);
+      if(!receiverEmail){
+        errEl.textContent = "Картку не знайдено"; cardInput.classList.add("error");
+        submitBtn.disabled=false; cardInput.disabled=false; amountInput.disabled=false; submitLabel.textContent="Переказати"; return;
+      }
+      var receiver = await getUser(receiverEmail);
+      if(!receiver){
+        errEl.textContent = "Картку не знайдено";
+        submitBtn.disabled=false; cardInput.disabled=false; amountInput.disabled=false; submitLabel.textContent="Переказати"; return;
+      }
+
+      sender.balance = Math.round((sender.balance - amount) * 100) / 100;
+      receiver.balance = Math.round((receiver.balance + amount) * 100) / 100;
+      var now = Date.now();
+      var senderCardDigits = sender.card.replace(/\s/g,"");
+      var receiverCardDigits = receiver.card.replace(/\s/g,"");
+
+      var txOut = {id: uid(), kind:"transfer_out", amount:-amount, date: now, senderCard: senderCardDigits, receiverCard: receiverCardDigits, purpose:"Переказ коштів"};
+      var txIn = {id: uid(), kind:"transfer_in", amount: amount, date: now, senderCard: senderCardDigits, receiverCard: receiverCardDigits, purpose:"Переказ коштів"};
+      sender.transactions.push(txOut);
+      receiver.transactions.push(txIn);
+      addXp(sender, "transfer_out");
+      addXp(receiver, "transfer_in");
+
+      var ok1 = await saveUser(sender);
+      var ok2 = await saveUser(receiver);
+      if(!ok1 || !ok2){
+        showToast("Не вдалося виконати переказ", "error");
+        submitBtn.disabled=false; cardInput.disabled=false; amountInput.disabled=false; submitLabel.textContent="Переказати"; return;
+      }
+
+      state.user = sender;
+      state.modal = {type:"receipt", tx:txOut};
+      render();
+      showToast("Переказано " + formatMoney(amount) + " " + CUR);
+    });
+
+    setTimeout(function(){ cardInput.focus(); }, 300);
+    return overlay;
+  }
+
+  // ---------- topup modal (admin only, demo currency) ----------
+  function renderTopupModal(){
+    if(state.email !== ADMIN_EMAIL){ state.modal = null; return document.createElement("div"); }
+    var overlay = document.createElement("div");
+    overlay.className = "overlay";
+    var modal = document.createElement("div");
+    modal.className = "modal";
+    modal.innerHTML =
+      '<div class="modal-handle"></div>' +
+      '<div class="modal-header"><h2>Поповнення (адмін, демо)</h2><button class="close-x" id="modal-close">&times;</button></div>' +
+      '<div class="field"><div class="field-label">Сума поповнення</div>' +
+      '<input type="number" id="tp-amount" placeholder="0" inputmode="decimal" min="0" step="0.01"></div>' +
+      '<div class="err-msg" id="tp-error"></div>' +
+      '<button class="btn btn-primary" id="tp-submit" style="margin-top:8px;"><span id="tp-submit-label">Поповнити</span></button>';
+    overlay.appendChild(modal);
+
+    var amountInput = modal.querySelector("#tp-amount");
+    var errEl = modal.querySelector("#tp-error");
+    var submitBtn = modal.querySelector("#tp-submit");
+    var submitLabel = modal.querySelector("#tp-submit-label");
+
+    overlay.addEventListener("click", function(e){ if(e.target === overlay) closeModal(); });
+    modal.querySelector("#modal-close").addEventListener("click", closeModal);
+    amountInput.addEventListener("input", function(){ errEl.textContent = ""; amountInput.classList.remove("error"); });
+
+    submitBtn.addEventListener("click", async function(){
+      var amount = parseFloat(amountInput.value);
+      if(!amount || amount <= 0){ errEl.textContent = "Введіть суму поповнення"; amountInput.classList.add("error"); return; }
+      submitBtn.disabled = true; amountInput.disabled = true;
+      submitLabel.innerHTML = '<span class="spinner"></span>';
+
+      var user = await getUser(state.email);
+      if(!user){ showToast("Помилка синхронізації", "error"); closeModal(); return; }
+      user.balance = Math.round((user.balance + amount) * 100) / 100;
+      var tx = {id: uid(), kind:"topup", amount: amount, date: Date.now(), receiverCard: user.card.replace(/\s/g,""), purpose:"Демо-поповнення"};
+      user.transactions.push(tx);
+
+      var ok = await saveUser(user);
+      if(!ok){ showToast("Не вдалося поповнити рахунок", "error"); submitBtn.disabled=false; amountInput.disabled=false; submitLabel.textContent="Поповнити"; return; }
+
+      state.user = user;
+      state.modal = {type:"receipt", tx:tx};
+      render();
+      showToast("Баланс поповнено на " + formatMoney(amount) + " " + CUR);
+    });
+
+    setTimeout(function(){ amountInput.focus(); }, 300);
+    return overlay;
+  }
+
+  // ---------- receipt modal ----------
+  function renderReceiptModal(tx){
+    var overlay = document.createElement("div");
+    overlay.className = "overlay";
+    var modal = document.createElement("div");
+    modal.className = "modal";
+
+    var isGoldKind = tx.kind === "vip_buy" || tx.kind === "vip_payout";
+    var isTopup = tx.kind === "topup" || tx.kind === "bonus";
+    var isOut = tx.amount < 0 && !isTopup;
+    var avatarClass = isGoldKind ? "gold" : (isTopup ? "topup" : (isOut ? "out" : "in"));
+    var avatarIcon = isGoldKind ? ICONS.crown : (isTopup ? ICONS.plus : (isOut ? ICONS.txOut : ICONS.txIn));
+    var heading = tx.purpose || (tx.amount > 0 ? "Надходження" : "Списання");
+
+    var rows = "";
+    if(tx.senderCard) rows += receiptRow("Картка відправника", maskCard(tx.senderCard), true);
+    if(tx.receiverCard) rows += receiptRow("Картка отримувача", maskCard(tx.receiverCard), true);
+    if(tx.purpose) rows += receiptRow("Призначення", tx.purpose);
+    rows += receiptRow("Сума операції", formatMoney(Math.abs(tx.amount)) + " " + CUR);
+    rows += receiptRow("Комісія", "0,00 " + CUR);
+    rows += '<div class="receipt-row"><div class="k">Статус</div><div class="v"><span class="badge-ok">' + ICONS.checkCircle + ' Виконано (демо)</span></div></div>';
+
+    modal.innerHTML =
+      '<div class="modal-handle"></div>' +
+      '<div class="modal-header"><h2>Квитанція</h2><button class="close-x" id="modal-close">&times;</button></div>' +
+      '<div class="receipt-hero"><div class="receipt-avatar ' + avatarClass + '">' + avatarIcon + '</div>' +
+      '<div class="receipt-status">' + escapeHtml(heading) + '</div>' +
+      '<div class="receipt-sub">' + formatDate(tx.date) + '</div></div>' +
+      '<div class="receipt-rows">' + rows + '</div>' +
+      '<button class="btn btn-ghost" id="receipt-close-btn" style="margin-top:20px;">Готово</button>';
+
+    overlay.appendChild(modal);
+    overlay.addEventListener("click", function(e){ if(e.target === overlay) closeModal(); });
+    modal.querySelector("#modal-close").addEventListener("click", closeModal);
+    modal.querySelector("#receipt-close-btn").addEventListener("click", closeModal);
+    return overlay;
+  }
+
+  function receiptRow(label, value, isNum){
+    return '<div class="receipt-row"><div class="k">' + escapeHtml(label) + '</div><div class="v' + (isNum ? " num" : "") + '">' + escapeHtml(value) + '</div></div>';
+  }
+
+  // ---------- boot ----------
+  async function boot(){
+    state.screen = "loading";
+    render();
+    var savedEmail = getSession();
+    if(savedEmail){
+      var user = null;
+      try{ user = await getUser(savedEmail); }catch(e){ user = null; }
+      if(user){
+        state.email = savedEmail; state.user = user; state.screen = "home";
+        render();
+        startTimers();
+        return;
+      } else {
+        setSession(null); state.screen = "email";
+      }
+    } else {
+      state.screen = "email";
+    }
+    render();
+  }
+
+  boot();
+})();
+</script>
+</body>
+</html>
