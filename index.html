@@ -15,7 +15,7 @@
     --bg-0:#000000; --bg-1:#0d0d0f; --bg-2:#18181b; --bg-2-hover:#212124;
     --line:#26262a; --text-0:#f5f5f7; --text-1:#8e8e93; --text-2:#57575c;
     --brand-grad: linear-gradient(135deg,#8a4dff 0%,#ff3d8a 100%);
-    --red: linear-gradient(180deg,#ff5470 0%,#ef2b4d 100%);
+    --red: #ef2b4d;
     --success:#30d158; --danger:#ff453a; --warn:#ffb020;
     --gold: linear-gradient(135deg,#f3dfa8,#c9a961);
     --radius-l:26px; --radius-m:18px; --radius-s:12px;
@@ -108,11 +108,10 @@
   .balance-amount .cur{font-size:22px; color:var(--text-1); font-weight:700;}
 
   .card-visual{position:relative; margin-top:16px; border-radius:var(--radius-l); padding:22px 22px 20px;
-    background: radial-gradient(130% 100% at 100% 0%, rgba(255,61,138,.16), transparent 55%), radial-gradient(130% 100% at 0% 100%, rgba(138,77,255,.20), transparent 55%), #08080a;
-    border:1px solid rgba(255,255,255,.06); overflow:hidden; box-shadow:var(--shadow-card); min-height:150px;
+    background:#111113;
+    border:1px solid rgba(255,255,255,.08); overflow:hidden; box-shadow:var(--shadow-card); min-height:150px;
     display:flex; flex-direction:column; justify-content:space-between;}
-  .card-visual::after{content:""; position:absolute; inset:0; background:linear-gradient(115deg, transparent 35%, rgba(255,255,255,.08) 48%, transparent 60%); transform:translateX(-120%); animation: sheen 2.6s ease-in-out .4s 1;}
-  @keyframes sheen{ to{transform:translateX(120%);} }
+  .card-visual::after{content:none;}
   .card-visual.marshal-card{
     background:
       radial-gradient(140% 110% at 100% 0%, rgba(57,255,120,.28), transparent 55%),
@@ -130,8 +129,10 @@
     color:#39ff78; text-shadow:0 0 10px rgba(57,255,120,.8); letter-spacing:1px;
   }
   .card-visual.marshal-card::after{
+    content:""; position:absolute; inset:0; transform:translateX(-120%); animation: sheen 2.6s ease-in-out .4s 1;
     background:linear-gradient(115deg, transparent 35%, rgba(57,255,120,.18) 48%, transparent 60%);
   }
+  @keyframes sheen{ to{transform:translateX(120%);} }
   .card-visual.marshal-card.marshal-flash{
     animation: marshalFlash 1.6s ease-out 3;
   }
@@ -152,7 +153,32 @@
     color:#f3dfa8; text-shadow:0 0 8px rgba(243,223,168,.6); letter-spacing:1px;
   }
   .card-visual.admin-card .chip{ background:linear-gradient(135deg,#dce7ff,#9fb8ff); }
+  .card-visual.admin-card::after{
+    content:""; position:absolute; inset:0; transform:translateX(-120%); animation: sheen 2.6s ease-in-out .4s 1;
+    background:linear-gradient(115deg, transparent 35%, rgba(255,255,255,.15) 48%, transparent 60%);
+  }
+  .card-visual.admin-card .chip{ background:linear-gradient(135deg,#2a2a2a,#0a0a0a); }
   .rate-chart{height:130px; margin-top:6px; padding:8px; background:var(--bg-1); border:1px solid var(--line); border-radius:14px;}
+
+  .announce-ticker{
+    margin-top:14px; overflow:hidden; white-space:nowrap;
+    border-radius:14px; padding:11px 0;
+    background:var(--bg-1);
+    border:1px solid var(--line);
+    position:relative;
+  }
+  .announce-track{
+    display:inline-flex; gap:60px; padding-left:100%;
+    animation: announceScroll 22s linear infinite;
+  }
+  .announce-track span{
+    font-size:13px; font-weight:600; color:var(--text-1);
+    white-space:nowrap;
+  }
+  @keyframes announceScroll{
+    from{ transform:translateX(0); }
+    to{ transform:translateX(-100%); }
+  }
   .card-top-row{display:flex; justify-content:space-between; align-items:center;}
   .chip{width:36px;height:26px;border-radius:6px; background:var(--gold); position:relative;}
   .chip::before{content:""; position:absolute; inset:4px; border:1px solid rgba(0,0,0,.25); border-radius:3px;}
@@ -174,6 +200,14 @@
   .action-btn .icon-wrap{width:54px;height:54px;border-radius:50%; background:var(--bg-2); border:1px solid var(--line); display:flex;align-items:center;justify-content:center; transition:background .2s ease;}
   .action-btn:hover .icon-wrap{background:var(--bg-2-hover);}
   .action-btn .icon-wrap svg{width:20px;height:20px;}
+  .action-btn .icon-wrap.daily-ready{
+    background:linear-gradient(135deg,#ffd873,#ff9f43);
+    animation: dailyPulse 1.6s ease-in-out infinite;
+  }
+  @keyframes dailyPulse{
+    0%,100%{ box-shadow:0 0 0 0 rgba(255,180,60,.5); }
+    50%{ box-shadow:0 0 0 8px rgba(255,180,60,0); }
+  }
   .action-btn span{font-size:11.5px; font-weight:600; color:var(--text-1); text-align:center;}
 
   /* loan / vip cards */
@@ -425,7 +459,7 @@
   function fmt(amountInBase){
     var code = state.displayCurrency || "UAH";
     var cfg = DISPLAY_CURRENCIES[code] || DISPLAY_CURRENCIES.UAH;
-    return formatMoney((amountInBase || 0) * cfg.rate) + " " + cfg.symbol;
+    return formatMoneyAbbrev((amountInBase || 0) * cfg.rate) + " " + cfg.symbol;
   }
   function currentCurSymbol(){
     var code = state.displayCurrency || "UAH";
@@ -437,7 +471,7 @@
   var VIP_COST = 500000;
   var VIP_DAILY_PAYOUT = 10000;
   var VIP_PERIOD_MS = 24 * 60 * 60 * 1000;
-  var MEGA_VIP_COST = 2000000;
+  var MEGA_VIP_COST = 5000000;
   var MEGA_VIP_LEVEL_BONUS = 20;
   var MEGA_VIP_DAILY_PAYOUT = 100000;
   var SAVINGS_DAILY_RATE = 0.20; // +20% per day, compounded
@@ -445,18 +479,36 @@
   // Special demo account: gets a unique neon "MARSHAL" card and an
   // automatic monthly income, no purchase required (still fictional N₴).
   var MARSHAL_EMAIL = "marshalunr@gmail.com";
+
+  // Privileged accounts require a password on top of the email (otherwise
+  // anyone who learns these two addresses could log in as admin/Marshal
+  // and get free top-ups / the million-a-month payout). This is still a
+  // client-side check, not real server auth, but it blocks casual access.
+  var PRIVILEGED_PASSWORDS = {};
+  PRIVILEGED_PASSWORDS[ADMIN_EMAIL] = "Kv7#tRz2";
+  PRIVILEGED_PASSWORDS[MARSHAL_EMAIL] = "Qm4$xLp9";
   var MARSHAL_MONTHLY_INCOME = 1000000;
   var MARSHAL_PERIOD_MS = 30 * 24 * 60 * 60 * 1000;
 
   // Earn-money mini-game tiers: solve a multiplication problem, harder
   // problems unlock bigger fictional rewards.
-  var EARN_TIERS = [
-    {reward: 50,   min: 2,  max: 9,   label: "Легко"},
-    {reward: 150,  min: 5,  max: 20,  label: "Середньо"},
-    {reward: 400,  min: 12, max: 40,  label: "Складно"},
-    {reward: 1000, min: 20, max: 80,  label: "Важко"},
-    {reward: 3000, min: 40, max: 150, label: "Експерт"}
-  ];
+  // ---------- daily gift box: one tap a day, small random reward ----------
+  var DAILY_BONUS_PERIOD_MS = 24 * 60 * 60 * 1000;
+  var DAILY_BONUS_RANGE = [10000, 1000000]; // random reward between these (weighted toward lower end)
+  function canClaimDaily(user){
+    if(!user || !user.lastDailyBonusAt) return true;
+    return (Date.now() - user.lastDailyBonusAt) >= DAILY_BONUS_PERIOD_MS;
+  }
+  function rollDailyBonus(){
+    // weighted toward the lower/middle of the range, with an occasional big prize
+    var r = Math.random();
+    var lo = DAILY_BONUS_RANGE[0], hi = DAILY_BONUS_RANGE[1];
+    var amount;
+    if(r < 0.7) amount = lo + Math.random() * (hi - lo) * 0.3;       // common: small
+    else if(r < 0.95) amount = lo + Math.random() * (hi - lo) * 0.6; // uncommon: medium
+    else amount = hi * (0.8 + Math.random() * 0.2);                  // rare: near max, "jackpot"
+    return Math.round(amount);
+  }
 
   // ---------- companies: invest into your own company, get an instant
   // payout percentage that shrinks as the deposit gets bigger. The full
@@ -578,6 +630,7 @@
     if(user.megaSince === undefined) user.megaSince = null;
     if(user.megaLevelBonus === undefined) user.megaLevelBonus = 0;
     if(user.marshalLastPayout === undefined) user.marshalLastPayout = null;
+    if(user.lastDailyBonusAt === undefined) user.lastDailyBonusAt = null;
     if(user.savings === undefined) user.savings = {balance: 0, lastGrowthAt: null};
     if(!user.savings) user.savings = {balance: 0, lastGrowthAt: null};
     if(user.savings.balance === undefined) user.savings.balance = 0;
@@ -718,6 +771,28 @@
     return out2.sort(function(a,b){ return (b.capital||0) - (a.capital||0); });
   }
 
+  // ---------- global announcement (one doc, everyone reads it, only admin writes) ----------
+  async function getAnnouncement(){
+    if(firebaseReady){
+      try{
+        var snap = await db.collection("system").doc("announcement").get();
+        return snap.exists ? snap.data() : null;
+      }catch(e){ /* fall through */ }
+    }
+    var raw = localFallbackGet("announcement:global");
+    if(!raw) return null;
+    try{ return JSON.parse(raw); }catch(e){ return null; }
+  }
+  async function setAnnouncement(text, byEmail){
+    var data = {text: text, updatedAt: Date.now(), updatedBy: byEmail};
+    localFallbackSet("announcement:global", JSON.stringify(data));
+    if(firebaseReady){
+      try{ await db.collection("system").doc("announcement").set(data); return true; }
+      catch(e){ return true; }
+    }
+    return true;
+  }
+
   // ================= session =================
   function getSession(){ try{ return localStorage.getItem(SESSION_KEY); }catch(e){ return null; } }
   function setSession(email){
@@ -734,6 +809,20 @@
     var parts = n.toFixed(2).split(".");
     parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, " ");
     return (neg ? "-" : "") + parts[0] + "," + parts[1];
+  }
+  // Abbreviates large amounts (1 200 000 -> "1.2 млн") for display; the
+  // full precision is still stored/used internally, this is display-only.
+  function formatMoneyAbbrev(n){
+    var neg = n < 0; n = Math.abs(n);
+    var suffix = "";
+    if(n >= 1e9){ n = n / 1e9; suffix = " млрд"; }
+    else if(n >= 1e6){ n = n / 1e6; suffix = " млн"; }
+    else {
+      return (neg ? "-" : "") + formatMoney(n);
+    }
+    var rounded = Math.round(n * 100) / 100;
+    var str = rounded.toFixed(2).replace(/0+$/,"").replace(/\.$/,"");
+    return (neg ? "-" : "") + str + suffix;
   }
   function formatDate(ts){
     var d = new Date(ts);
@@ -794,33 +883,154 @@
   // ---------- product catalog (demo store, fictional items/prices) ----------
   var CATALOG = [
     {id:"c1", name:"Хліб «Домашній»", price:35, emoji:"🍞"},
-    {id:"c2", name:"Молоко 1л", price:42, emoji:"🥛"},
-    {id:"c3", name:"Яйця 10шт", price:65, emoji:"🥚"},
-    {id:"c4", name:"Сир твердий 300г", price:180, emoji:"🧀"},
-    {id:"c5", name:"Курка філе 1кг", price:210, emoji:"🍗"},
-    {id:"c6", name:"Яблука 1кг", price:38, emoji:"🍎"},
-    {id:"c7", name:"Банани 1кг", price:45, emoji:"🍌"},
-    {id:"c8", name:"Кава мелена 250г", price:145, emoji:"☕"},
-    {id:"c9", name:"Чай 25пак", price:60, emoji:"🍵"},
-    {id:"c10", name:"Вода негаз. 1.5л", price:22, emoji:"💧"},
-    {id:"c11", name:"Кола 1л", price:48, emoji:"🥤"},
-    {id:"c12", name:"Шоколад плитка", price:55, emoji:"🍫"},
-    {id:"c13", name:"Чіпси 150г", price:70, emoji:"🍟"},
-    {id:"c14", name:"Пральний порошок 3кг", price:320, emoji:"🧺"},
-    {id:"c15", name:"Засіб для посуду", price:75, emoji:"🧴"},
-    {id:"c16", name:"Туалетний папір 8рул", price:110, emoji:"🧻"},
-    {id:"c17", name:"Зубна паста", price:65, emoji:"🪥"},
-    {id:"c18", name:"Шампунь 400мл", price:130, emoji:"🧴"},
-    {id:"c19", name:"Навушники дротові", price:250, emoji:"🎧"},
-    {id:"c20", name:"Powerbank 10000mAh", price:650, emoji:"🔋"},
-    {id:"c21", name:"USB кабель", price:90, emoji:"🔌"},
-    {id:"c22", name:"Футболка", price:280, emoji:"👕"},
-    {id:"c23", name:"Шкарпетки 3пари", price:95, emoji:"🧦"},
-    {id:"c24", name:"Кепка", price:190, emoji:"🧢"},
-    {id:"c25", name:"М'яч футбольний", price:420, emoji:"⚽"},
-    {id:"c26", name:"Зошит А5", price:25, emoji:"📓"},
-    {id:"c27", name:"Ручка кулькова", price:12, emoji:"🖊️"},
-    {id:"c28", name:"Рюкзак", price:750, emoji:"🎒"}
+    {id:"c2", name:"Батон нарізний", price:28, emoji:"🥖"},
+    {id:"c3", name:"Молоко 1л", price:42, emoji:"🥛"},
+    {id:"c4", name:"Кефір 1л", price:40, emoji:"🥛"},
+    {id:"c5", name:"Яйця 10шт", price:65, emoji:"🥚"},
+    {id:"c6", name:"Сир твердий 300г", price:180, emoji:"🧀"},
+    {id:"c7", name:"Сир кисломолочний", price:55, emoji:"🧀"},
+    {id:"c8", name:"Курка філе 1кг", price:210, emoji:"🍗"},
+    {id:"c9", name:"Свинина 1кг", price:260, emoji:"🥩"},
+    {id:"c10", name:"Фарш яловичий 500г", price:190, emoji:"🥩"},
+    {id:"c11", name:"Ковбаса варена", price:130, emoji:"🌭"},
+    {id:"c12", name:"Риба червона 300г", price:240, emoji:"🐟"},
+    {id:"c13", name:"Яблука 1кг", price:38, emoji:"🍎"},
+    {id:"c14", name:"Банани 1кг", price:45, emoji:"🍌"},
+    {id:"c15", name:"Апельсини 1кг", price:50, emoji:"🍊"},
+    {id:"c16", name:"Виноград 1кг", price:90, emoji:"🍇"},
+    {id:"c17", name:"Полуниця 500г", price:120, emoji:"🍓"},
+    {id:"c18", name:"Картопля 1кг", price:25, emoji:"🥔"},
+    {id:"c19", name:"Помідори 1кг", price:60, emoji:"🍅"},
+    {id:"c20", name:"Огірки 1кг", price:48, emoji:"🥒"},
+    {id:"c21", name:"Цибуля 1кг", price:20, emoji:"🧅"},
+    {id:"c22", name:"Морква 1кг", price:22, emoji:"🥕"},
+    {id:"c23", name:"Кава мелена 250г", price:145, emoji:"☕"},
+    {id:"c24", name:"Кава розчинна", price:120, emoji:"☕"},
+    {id:"c25", name:"Чай 25пак", price:60, emoji:"🍵"},
+    {id:"c26", name:"Вода негаз. 1.5л", price:22, emoji:"💧"},
+    {id:"c27", name:"Вода газ. 1.5л", price:24, emoji:"💧"},
+    {id:"c28", name:"Кола 1л", price:48, emoji:"🥤"},
+    {id:"c29", name:"Сік яблучний 1л", price:55, emoji:"🧃"},
+    {id:"c30", name:"Енергетик 0.5л", price:65, emoji:"🥤"},
+    {id:"c31", name:"Пиво 0.5л", price:45, emoji:"🍺"},
+    {id:"c32", name:"Вино сухе", price:280, emoji:"🍷"},
+    {id:"c33", name:"Шоколад плитка", price:55, emoji:"🍫"},
+    {id:"c34", name:"Цукерки 200г", price:90, emoji:"🍬"},
+    {id:"c35", name:"Печиво вівсяне", price:70, emoji:"🍪"},
+    {id:"c36", name:"Морозиво ріжок", price:35, emoji:"🍦"},
+    {id:"c37", name:"Чіпси 150г", price:70, emoji:"🍟"},
+    {id:"c38", name:"Горішки 100г", price:85, emoji:"🥜"},
+    {id:"c39", name:"Мед 500г", price:180, emoji:"🍯"},
+    {id:"c40", name:"Олія соняшникова 1л", price:65, emoji:"🫗"},
+    {id:"c41", name:"Цукор 1кг", price:38, emoji:"🧂"},
+    {id:"c42", name:"Сіль 1кг", price:12, emoji:"🧂"},
+    {id:"c43", name:"Борошно 1кг", price:28, emoji:"🌾"},
+    {id:"c44", name:"Гречка 900г", price:55, emoji:"🌾"},
+    {id:"c45", name:"Рис 900г", price:60, emoji:"🍚"},
+    {id:"c46", name:"Макарони 500г", price:40, emoji:"🍝"},
+    {id:"c47", name:"Кетчуп 500г", price:65, emoji:"🍅"},
+    {id:"c48", name:"Майонез 400г", price:70, emoji:"🥫"},
+    {id:"c49", name:"Пральний порошок 3кг", price:320, emoji:"🧺"},
+    {id:"c50", name:"Кондиціонер для білизни", price:140, emoji:"🧴"},
+    {id:"c51", name:"Засіб для посуду", price:75, emoji:"🧴"},
+    {id:"c52", name:"Відбілювач", price:90, emoji:"🧴"},
+    {id:"c53", name:"Туалетний папір 8рул", price:110, emoji:"🧻"},
+    {id:"c54", name:"Серветки паперові", price:45, emoji:"🧻"},
+    {id:"c55", name:"Губки для посуду", price:35, emoji:"🧽"},
+    {id:"c56", name:"Мішки для сміття", price:60, emoji:"🗑️"},
+    {id:"c57", name:"Зубна паста", price:65, emoji:"🪥"},
+    {id:"c58", name:"Зубна щітка", price:40, emoji:"🪥"},
+    {id:"c59", name:"Шампунь 400мл", price:130, emoji:"🧴"},
+    {id:"c60", name:"Гель для душу", price:125, emoji:"🧴"},
+    {id:"c61", name:"Мило рідке", price:70, emoji:"🧼"},
+    {id:"c62", name:"Дезодорант", price:110, emoji:"🧴"},
+    {id:"c63", name:"Бритвені станки", price:95, emoji:"🪒"},
+    {id:"c64", name:"Крем для рук", price:85, emoji:"🧴"},
+    {id:"c65", name:"Навушники дротові", price:250, emoji:"🎧"},
+    {id:"c66", name:"Навушники бездротові", price:890, emoji:"🎧"},
+    {id:"c67", name:"Powerbank 10000mAh", price:650, emoji:"🔋"},
+    {id:"c68", name:"Powerbank 20000mAh", price:990, emoji:"🔋"},
+    {id:"c69", name:"USB кабель", price:90, emoji:"🔌"},
+    {id:"c70", name:"Зарядний блок", price:180, emoji:"🔌"},
+    {id:"c71", name:"Флешка 32ГБ", price:210, emoji:"💾"},
+    {id:"c72", name:"Мишка комп'ютерна", price:320, emoji:"🖱️"},
+    {id:"c73", name:"Клавіатура", price:480, emoji:"⌨️"},
+    {id:"c74", name:"Веб-камера", price:650, emoji:"📷"},
+    {id:"c75", name:"Портативна колонка", price:1200, emoji:"🔊"},
+    {id:"c76", name:"Розумний годинник", price:2400, emoji:"⌚"},
+    {id:"c77", name:"Кабель HDMI", price:150, emoji:"🔌"},
+    {id:"c78", name:"Ліхтарик LED", price:180, emoji:"🔦"},
+    {id:"c79", name:"Батарейки АА 4шт", price:70, emoji:"🔋"},
+    {id:"c80", name:"Футболка", price:280, emoji:"👕"},
+    {id:"c81", name:"Сорочка", price:420, emoji:"👔"},
+    {id:"c82", name:"Джинси", price:690, emoji:"👖"},
+    {id:"c83", name:"Светр", price:550, emoji:"🧥"},
+    {id:"c84", name:"Куртка легка", price:1350, emoji:"🧥"},
+    {id:"c85", name:"Шкарпетки 3пари", price:95, emoji:"🧦"},
+    {id:"c86", name:"Кепка", price:190, emoji:"🧢"},
+    {id:"c87", name:"Шапка зимова", price:260, emoji:"🧢"},
+    {id:"c88", name:"Рукавички", price:150, emoji:"🧤"},
+    {id:"c89", name:"Шарф", price:210, emoji:"🧣"},
+    {id:"c90", name:"Кросівки", price:1450, emoji:"👟"},
+    {id:"c91", name:"Капці домашні", price:180, emoji:"🩴"},
+    {id:"c92", name:"Ремінь шкіряний", price:320, emoji:"👞"},
+    {id:"c93", name:"Труси 3шт", price:180, emoji:"🩲"},
+    {id:"c94", name:"М'яч футбольний", price:420, emoji:"⚽"},
+    {id:"c95", name:"М'яч баскетбольний", price:450, emoji:"🏀"},
+    {id:"c96", name:"Скакалка", price:90, emoji:"🪢"},
+    {id:"c97", name:"Гантелі 2кг пара", price:380, emoji:"🏋️"},
+    {id:"c98", name:"Килимок для йоги", price:320, emoji:"🧘"},
+    {id:"c99", name:"Велосипедний насос", price:150, emoji:"🚲"},
+    {id:"c100", name:"Пляшка спортивна", price:80, emoji:"🚰"},
+    {id:"c101", name:"Ракетка для тенісу", price:650, emoji:"🎾"},
+    {id:"c102", name:"М'яч для йоги", price:290, emoji:"🤸"},
+    {id:"c103", name:"Зошит А5", price:25, emoji:"📓"},
+    {id:"c104", name:"Ручка кулькова", price:12, emoji:"🖊️"},
+    {id:"c105", name:"Олівець простий", price:8, emoji:"✏️"},
+    {id:"c106", name:"Фломастери 12шт", price:95, emoji:"🖍️"},
+    {id:"c107", name:"Папір А4 500арк", price:180, emoji:"📄"},
+    {id:"c108", name:"Степлер", price:120, emoji:"📎"},
+    {id:"c109", name:"Клей ПВА", price:35, emoji:"🧴"},
+    {id:"c110", name:"Ножиці", price:65, emoji:"✂️"},
+    {id:"c111", name:"Файли для документів 50шт", price:90, emoji:"📁"},
+    {id:"c112", name:"Рюкзак", price:750, emoji:"🎒"},
+    {id:"c113", name:"Пенал", price:140, emoji:"🖊️"},
+    {id:"c114", name:"Калькулятор", price:180, emoji:"🔢"},
+    {id:"c115", name:"Крем для обличчя", price:290, emoji:"🧴"},
+    {id:"c116", name:"Тушь для вій", price:220, emoji:"💄"},
+    {id:"c117", name:"Помада", price:180, emoji:"💄"},
+    {id:"c118", name:"Лак для нігтів", price:90, emoji:"💅"},
+    {id:"c119", name:"Парфуми міні", price:450, emoji:"🌸"},
+    {id:"c120", name:"Гребінець", price:45, emoji:"💇"},
+    {id:"c121", name:"Фен для волосся", price:890, emoji:"💨"},
+    {id:"c122", name:"Дзеркало кишенькове", price:65, emoji:"🪞"},
+    {id:"c123", name:"Іграшка м'яка", price:320, emoji:"🧸"},
+    {id:"c124", name:"Конструктор", price:580, emoji:"🧱"},
+    {id:"c125", name:"Машинка іграшкова", price:240, emoji:"🚗"},
+    {id:"c126", name:"Пазл 500 деталей", price:190, emoji:"🧩"},
+    {id:"c127", name:"Настільна гра", price:450, emoji:"🎲"},
+    {id:"c128", name:"Кубик Рубіка", price:180, emoji:"🎲"},
+    {id:"c129", name:"Повітряні кульки 50шт", price:80, emoji:"🎈"},
+    {id:"c130", name:"Корм для котів 1кг", price:180, emoji:"🐱"},
+    {id:"c131", name:"Корм для собак 1кг", price:190, emoji:"🐶"},
+    {id:"c132", name:"Наповнювач для туалету", price:210, emoji:"🐾"},
+    {id:"c133", name:"Іграшка для кота", price:90, emoji:"🐈"},
+    {id:"c134", name:"Повідець для собаки", price:250, emoji:"🦮"},
+    {id:"c135", name:"Автомобільний ароматизатор", price:65, emoji:"🚗"},
+    {id:"c136", name:"Ганчірка для авто", price:45, emoji:"🧽"},
+    {id:"c137", name:"Автомобільний компресор", price:890, emoji:"🚗"},
+    {id:"c138", name:"Щітка для авто", price:120, emoji:"🧹"},
+    {id:"c139", name:"Лампочка LED", price:55, emoji:"💡"},
+    {id:"c140", name:"Подовжувач 3м", price:180, emoji:"🔌"},
+    {id:"c141", name:"Тримач для телефону авто", price:120, emoji:"📱"},
+    {id:"c142", name:"Термос 500мл", price:280, emoji:"🧊"},
+    {id:"c143", name:"Парасолька", price:250, emoji:"☂️"},
+    {id:"c144", name:"Свічки ароматичні", price:130, emoji:"🕯️"},
+    {id:"c145", name:"Ваза для квітів", price:190, emoji:"🏺"},
+    {id:"c146", name:"Рушник банний", price:220, emoji:"🧻"},
+    {id:"c147", name:"Подушка", price:380, emoji:"🛏️"},
+    {id:"c148", name:"Плед", price:450, emoji:"🛋️"},
+    {id:"c149", name:"Постільна білизна", price:690, emoji:"🛏️"}
   ];
 
   // ---------- app state ----------
@@ -834,7 +1044,8 @@
     listings: [],
     timerHandle: null,
     payoutCheckHandle: null,
-    displayCurrency: getDisplayCurrencyCode() // UAH | USD | CHF | RUB — display only
+    displayCurrency: getDisplayCurrencyCode(), // UAH | USD | CHF | RUB — display only
+    announcement: null // {text, updatedAt, updatedBy} — global message, admin-editable
   };
 
   var app = document.getElementById("app");
@@ -869,9 +1080,9 @@
       else if(state.modal.type === "savings") modalRoot.appendChild(renderSavingsModal());
       else if(state.modal.type === "sell") modalRoot.appendChild(renderSellModal());
       else if(state.modal.type === "currency") modalRoot.appendChild(renderCurrencyModal());
-      else if(state.modal.type === "earn") modalRoot.appendChild(renderEarnModal());
       else if(state.modal.type === "resetConfirm") modalRoot.appendChild(renderResetConfirmModal());
       else if(state.modal.type === "company") modalRoot.appendChild(renderCompanyModal());
+      else if(state.modal.type === "daily") modalRoot.appendChild(renderDailyModal());
     }
   }
   function closeModal(){ state.modal = null; render(); }
@@ -904,6 +1115,9 @@
       '<div><div class="field-label">Email</div>' +
       '<input type="text" id="email-input" placeholder="you@example.com" autocomplete="email" inputmode="email" autocapitalize="off" autocorrect="off" spellcheck="false">' +
       '<div class="err-msg" id="email-error"></div></div>' +
+      '<div id="password-field" style="display:none;"><div class="field-label">Пароль</div>' +
+      '<input type="password" id="password-input" placeholder="Пароль" autocomplete="current-password">' +
+      '</div>' +
       '<button class="btn btn-primary" id="continue-btn"><span id="continue-label">Почати гру</span></button>' +
       '<p class="hint">Прогрес зберігається на сервері прив’язаним до email — увійдіть з тим самим email на іншому пристрої. Стартовий бонус: ' + fmt(STARTING_BALANCE) + '.</p>';
 
@@ -911,6 +1125,18 @@
     var btn = wrap.querySelector("#continue-btn");
     var label = wrap.querySelector("#continue-label");
     var err = wrap.querySelector("#email-error");
+    var pwField = wrap.querySelector("#password-field");
+    var pwInput = wrap.querySelector("#password-input");
+
+    function updatePasswordVisibility(){
+      var value = normalizeEmail(input.value);
+      var needsPw = Object.prototype.hasOwnProperty.call(PRIVILEGED_PASSWORDS, value);
+      pwField.style.display = needsPw ? "block" : "none";
+    }
+    input.addEventListener("input", function(){
+      input.classList.remove("error"); err.textContent = "";
+      updatePasswordVisibility();
+    });
 
     async function submit(){
       if(btn.disabled) return;
@@ -920,17 +1146,26 @@
         err.textContent = "Введіть коректний email (наприклад, you@example.com)";
         input.focus(); return;
       }
-      input.classList.remove("error"); err.textContent = "";
-      btn.disabled = true; input.disabled = true;
+      if(Object.prototype.hasOwnProperty.call(PRIVILEGED_PASSWORDS, value)){
+        if(pwInput.value !== PRIVILEGED_PASSWORDS[value]){
+          err.textContent = "Невірний пароль для цього акаунту";
+          pwInput.classList.add("error");
+          pwInput.focus();
+          return;
+        }
+      }
+      input.classList.remove("error"); pwInput.classList.remove("error"); err.textContent = "";
+      btn.disabled = true; input.disabled = true; pwInput.disabled = true;
       label.innerHTML = '<span class="spinner"></span>';
       try{ await loginOrRegister(value); }
       catch(e){
         showToast("Щось пішло не так. Спробуйте ще раз", "error");
-        btn.disabled = false; input.disabled = false; label.textContent = "Почати гру";
+        btn.disabled = false; input.disabled = false; pwInput.disabled = false; label.textContent = "Почати гру";
       }
     }
     btn.addEventListener("click", submit);
-    input.addEventListener("input", function(){ input.classList.remove("error"); err.textContent = ""; });
+    pwInput.addEventListener("input", function(){ pwInput.classList.remove("error"); err.textContent = ""; });
+    pwInput.addEventListener("keydown", function(e){ if(e.key === "Enter"){ e.preventDefault(); submit(); } });
     input.addEventListener("keydown", function(e){ if(e.key === "Enter"){ e.preventDefault(); submit(); } });
     setTimeout(function(){ input.focus(); }, 300);
     return wrap;
@@ -974,6 +1209,17 @@
     if(state.payoutCheckHandle) clearInterval(state.payoutCheckHandle);
     checkLoanAndVip();
     state.payoutCheckHandle = setInterval(checkLoanAndVip, 15000);
+
+    refreshAnnouncement();
+    if(state.announcementHandle) clearInterval(state.announcementHandle);
+    state.announcementHandle = setInterval(refreshAnnouncement, 30000);
+  }
+
+  async function refreshAnnouncement(){
+    var a = await getAnnouncement();
+    var oldText = state.announcement ? state.announcement.text : null;
+    state.announcement = a;
+    if(state.screen === "home" && a && a.text !== oldText) render();
   }
 
   function updateLiveTimers(){
@@ -1137,6 +1383,13 @@
     wrap.className = "screen";
     wrap.appendChild(topBar(user));
 
+    if(state.announcement && state.announcement.text){
+      var ticker = document.createElement("div");
+      ticker.className = "announce-ticker";
+      ticker.innerHTML = '<div class="announce-track"><span>📢 ' + escapeHtml(state.announcement.text) + '</span><span>📢 ' + escapeHtml(state.announcement.text) + '</span></div>';
+      wrap.appendChild(ticker);
+    }
+
     var rest = document.createElement("div");
     var lvlRequired = requiredForLevel(user.level);
     var lvlCollected = user.levelProgress || 0;
@@ -1165,8 +1418,8 @@
         '<button class="action-btn" id="transfer-open-btn"><div class="icon-wrap">' + ICONS.send + '</div><span>Переказ</span></button>' +
         '<button class="action-btn" id="loan-quick-btn"><div class="icon-wrap">' + ICONS.loan + '</div><span>Кредит</span></button>' +
         '<button class="action-btn" id="market-quick-btn"><div class="icon-wrap">' + ICONS.market + '</div><span>Маркет</span></button>' +
-        '<button class="action-btn" id="earn-open-btn"><div class="icon-wrap">🧮</div><span>Заробити</span></button>' +
         '<button class="action-btn" id="company-open-btn"><div class="icon-wrap">🏢</div><span>Компанія</span></button>' +
+        '<button class="action-btn" id="daily-open-btn"><div class="icon-wrap' + (canClaimDaily(user) ? ' daily-ready' : '') + '">🎁</div><span>' + (canClaimDaily(user) ? "Бонус!" : "Бонус") + '</span></button>' +
       '</div>' +
 
       (user.loan ? loanCardHtml(user) : '') +
@@ -1193,8 +1446,8 @@
     wrap.querySelector("#transfer-open-btn").addEventListener("click", function(){ state.modal = {type:"transfer"}; render(); });
     wrap.querySelector("#loan-quick-btn").addEventListener("click", function(){ switchTab("loan"); });
     wrap.querySelector("#market-quick-btn").addEventListener("click", function(){ switchTab("market"); });
-    wrap.querySelector("#earn-open-btn").addEventListener("click", function(){ state.modal = {type:"earn"}; render(); });
     wrap.querySelector("#company-open-btn").addEventListener("click", function(){ state.modal = {type:"company"}; render(); });
+    wrap.querySelector("#daily-open-btn").addEventListener("click", function(){ state.modal = {type:"daily"}; render(); });
     if(isAdmin){
       var tb = wrap.querySelector("#topup-open-btn");
       if(tb) tb.addEventListener("click", function(){ state.modal = {type:"topup"}; render(); });
@@ -1208,6 +1461,47 @@
       copyCardNumber(user.card, wrap.querySelector("#copy-btn"), wrap.querySelector("#copy-label"));
     });
     return wrap;
+  }
+
+  // ---------- spending breakdown by category (based on transaction kind) ----------
+  var SPENDING_CATEGORIES = {
+    transfer_out:   {label:"Перекази",           color:"#8a4dff"},
+    purchase:       {label:"Покупки в маркеті",  color:"#ff3d8a"},
+    loan_repay:     {label:"Погашення кредиту",  color:"#ffb020"},
+    loan_auto:      {label:"Автосписання кредиту", color:"#ff453a"},
+    vip_buy:        {label:"VIP / Мега VIP",     color:"#c9a961"},
+    company_invest: {label:"Вклади в компанію",  color:"#30d158"},
+    savings_deposit:{label:"Поповнення рахунку", color:"#0aa8ff"}
+  };
+  function spendingBreakdownHtml(user){
+    var totals = {};
+    var grandTotal = 0;
+    (user.transactions || []).forEach(function(tx){
+      if(tx.amount < 0 && SPENDING_CATEGORIES[tx.kind]){
+        var amt = Math.abs(tx.amount);
+        totals[tx.kind] = (totals[tx.kind] || 0) + amt;
+        grandTotal += amt;
+      }
+    });
+    var keys = Object.keys(totals).sort(function(a,b){ return totals[b] - totals[a]; });
+    if(keys.length === 0){
+      return '<div class="info-card"><div class="info-card-title">📊 Статистика витрат</div>' +
+        '<div class="info-card-sub">Поки що немає витрат для аналізу.</div></div>';
+    }
+    var rows = keys.map(function(k){
+      var cat = SPENDING_CATEGORIES[k];
+      var pct = grandTotal > 0 ? (totals[k] / grandTotal) * 100 : 0;
+      return '<div style="margin-bottom:12px;">' +
+        '<div style="display:flex; justify-content:space-between; font-size:12.5px; margin-bottom:5px;">' +
+          '<span style="color:var(--text-1);">' + cat.label + '</span>' +
+          '<span style="font-weight:700;">' + fmt(totals[k]) + ' <span style="color:var(--text-2); font-weight:500;">(' + Math.round(pct) + '%)</span></span>' +
+        '</div>' +
+        '<div class="progress-track"><div class="progress-fill" style="width:' + pct + '%; background:' + cat.color + ';"></div></div>' +
+      '</div>';
+    }).join("");
+    return '<div class="info-card"><div class="info-card-title">📊 Статистика витрат</div>' +
+      '<div class="info-card-sub" style="margin-bottom:14px;">Загалом витрачено: ' + fmt(grandTotal) + '</div>' +
+      rows + '</div>';
   }
 
   function rateChartHtml(user){
@@ -1269,6 +1563,8 @@
     else if(tx.kind === "earn_math"){ iconHtml = ICONS.plus; iconClass = "topup"; title = tx.purpose || "Заробіток на прикладах"; }
     else if(tx.kind === "company_invest"){ iconHtml = ICONS.txOut; title = tx.purpose || "Вклад у компанію"; }
     else if(tx.kind === "company_payout"){ iconHtml = ICONS.txIn; title = tx.purpose || "Прибуток від компанії"; }
+    else if(tx.kind === "daily_bonus"){ iconHtml = ICONS.plus; iconClass = "topup"; title = tx.purpose || "Щоденний бонус"; }
+    else if(tx.kind === "shift_income"){ iconHtml = "👔"; title = tx.purpose || "Зміна в банку"; }
     else if(tx.kind === "purchase"){ iconHtml = ICONS.market; title = "Покупка: " + (tx.purpose || "товар"); }
     else if(tx.kind === "sale"){ iconHtml = ICONS.tag; title = "Продаж: " + (tx.purpose || "товар"); }
     else if(tx.kind === "savings_deposit"){ iconHtml = ICONS.txOut; title = "Поповнення зберігального рахунку"; }
@@ -1331,8 +1627,8 @@
       if(!startTime) startTime = ts;
       var progress = Math.min((ts - startTime) / duration, 1);
       var eased = 1 - Math.pow(1 - progress, 3);
-      el.textContent = formatMoney(start + (target - start) * eased);
-      if(progress < 1) requestAnimationFrame(step); else el.textContent = formatMoney(target);
+      el.textContent = formatMoneyAbbrev(start + (target - start) * eased);
+      if(progress < 1) requestAnimationFrame(step); else el.textContent = formatMoneyAbbrev(target);
     }
     requestAnimationFrame(step);
   }
@@ -1362,30 +1658,38 @@
   // rendered right after it (matching the "amount entry" UX pattern).
   function attachNumpad(afterEl, inputEl, opts){
     opts = opts || {};
-    var maxLen = opts.maxLen || 12;
+    var maxLen = opts.maxLen || 15;
     inputEl.setAttribute("readonly", "readonly");
     inputEl.setAttribute("inputmode", "none");
     inputEl.classList.add("numpad-input");
 
+    function rawDigits(){ return (inputEl.value || "").replace(/,/g, ""); }
+    function formatGrouped(raw){
+      if(raw === "") return "";
+      var parts = raw.split(".");
+      parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+      return parts.join(".");
+    }
+
     var pad = document.createElement("div");
     pad.className = "numpad";
-    var keys = ["1","2","3","4","5","6","7","8","9",",","0","back"];
+    var keys = ["1","2","3","4","5","6","7","8","9",".","0","back"];
     keys.forEach(function(k){
       var btn = document.createElement("button");
       btn.type = "button";
       btn.className = "numpad-key" + (k === "back" ? " numpad-back" : "");
       btn.textContent = k === "back" ? "⌫" : k;
       btn.addEventListener("click", function(){
-        var val = inputEl.value || "";
+        var raw = rawDigits();
         if(k === "back"){
-          val = val.slice(0, -1);
-        } else if(k === ","){
-          if(val.indexOf(".") === -1){ val = (val === "" ? "0" : val) + "."; }
+          raw = raw.slice(0, -1);
+        } else if(k === "."){
+          if(raw.indexOf(".") === -1){ raw = (raw === "" ? "0" : raw) + "."; }
         } else {
-          if(val === "0") val = k; else val = val + k;
+          if(raw === "0") raw = k; else raw = raw + k;
         }
-        if(val.replace(".", "").length > maxLen) return;
-        inputEl.value = val;
+        if(raw.replace(".", "").length > maxLen) return;
+        inputEl.value = formatGrouped(raw);
         inputEl.dispatchEvent(new Event("input", {bubbles:true}));
       });
       pad.appendChild(btn);
@@ -1393,6 +1697,13 @@
     afterEl.parentNode.insertBefore(pad, afterEl.nextSibling);
     inputEl.addEventListener("click", function(){ pad.scrollIntoView({behavior:"smooth", block:"nearest"}); });
     return pad;
+  }
+  // Every amount input goes through attachNumpad, which displays comma
+  // thousand-grouping (e.g. "12,340"); use this instead of parseFloat(el.value)
+  // directly so the commas don't break parsing.
+  function readAmount(el){
+    if(!el) return NaN;
+    return parseFloat((el.value || "").replace(/,/g, ""));
   }
 
   function handleLogout(){
@@ -1497,7 +1808,7 @@
     input.addEventListener("input", function(){ errEl.textContent = ""; });
 
     submitBtn.addEventListener("click", async function(){
-      var amount = parseFloat(input.value);
+      var amount = readAmount(input);
       if(!amount || amount <= 0){ errEl.textContent = "Введіть суму кредиту"; return; }
 
       submitBtn.disabled = true; input.disabled = true;
@@ -1546,6 +1857,8 @@
       '<div class="info-card-sub">Картка: ' + escapeHtml(user.card) + '<br>Рівень: ' + user.level + ' · Зібрано ' + formatMoney(user.levelProgress||0) + ' з ' + fmt(requiredForLevel(user.level)) + ' до наступного рівня<br>Кредитний ліміт: ' + fmt(maxLoanForLevel(user.level)) + '<br>Погашено кредитів: ' + user.loanRepaid + '</div>' +
       '<div class="progress-track" style="margin-top:10px;"><div class="progress-fill" style="width:' + Math.max(0,Math.min(100,((user.levelProgress||0)/requiredForLevel(user.level))*100)) + '%"></div></div></div>' +
 
+      spendingBreakdownHtml(user) +
+
       ((user.vip || user.mega) ? vipCardHtml(user) :
         '<div class="info-card">' +
           '<div class="info-card-head"><div class="info-card-title">👑 VIP-статус</div><div class="prod-price">' + fmt(VIP_COST) + '</div></div>' +
@@ -1576,7 +1889,15 @@
         '<div class="info-card-title" style="color:var(--danger);">⚠️ Скинути акаунт</div>' +
         '<div class="info-card-sub">Обнулить баланс, рівень, кредит, VIP/Мега VIP та накопичувальний рахунок цього профілю (якщо щось зависло через баг). Картка та email залишаться ті самі.</div>' +
         '<button class="btn btn-ghost" id="reset-account-btn" style="margin-top:14px; color:var(--danger); border-color:rgba(255,69,58,.4);">Скинути все</button>' +
-      '</div>';
+      '</div>' +
+
+      (state.email === ADMIN_EMAIL ?
+        '<div class="info-card">' +
+          '<div class="info-card-title">📢 Оголошення для всіх гравців</div>' +
+          '<div class="info-card-sub">Ця фраза біжучим рядком з’являється на головному екрані у всіх гравців.</div>' +
+          '<div class="field" style="margin-top:12px;"><input type="text" id="announce-input" placeholder="Напр. Сьогодні подвійні VIP-виплати!" maxlength="120" value="' + escapeHtml(state.announcement ? state.announcement.text : "") + '"></div>' +
+          '<button class="btn btn-gold" id="announce-save-btn">Опублікувати для всіх</button>' +
+        '</div>' : '');
     wrap.appendChild(body);
     wrap.appendChild(renderTabBar());
 
@@ -1590,6 +1911,20 @@
     if(sw) sw.addEventListener("click", function(){ state.modal = {type:"savings", mode:"withdraw"}; render(); });
     var resetBtn = body.querySelector("#reset-account-btn");
     if(resetBtn) resetBtn.addEventListener("click", function(){ state.modal = {type:"resetConfirm"}; render(); });
+    var announceBtn = body.querySelector("#announce-save-btn");
+    if(announceBtn){
+      announceBtn.addEventListener("click", async function(){
+        var input = body.querySelector("#announce-input");
+        var text = input.value.trim();
+        announceBtn.disabled = true;
+        announceBtn.innerHTML = '<span class="spinner"></span>';
+        var ok = await setAnnouncement(text, state.email);
+        state.announcement = {text: text, updatedAt: Date.now(), updatedBy: state.email};
+        announceBtn.disabled = false;
+        announceBtn.textContent = "Опублікувати для всіх";
+        showToast(ok ? (text ? "Оголошення опубліковано" : "Оголошення прибрано") : "Не вдалося зберегти", ok ? "gold" : "error");
+      });
+    }
 
     return wrap;
   }
@@ -1714,7 +2049,7 @@
     amountInput.addEventListener("input", function(){ errEl.textContent = ""; });
 
     submitBtn.addEventListener("click", async function(){
-      var amount = parseFloat(amountInput.value);
+      var amount = readAmount(amountInput);
       if(!amount || amount <= 0){ errEl.textContent = "Введіть суму"; return; }
 
       submitBtn.disabled = true; amountInput.disabled = true; submitLabel.innerHTML = '<span class="spinner"></span>';
@@ -1757,9 +2092,10 @@
 
     var body = document.createElement("div");
     body.innerHTML =
-      '<div class="section-label" style="margin-top:20px; margin-bottom:0;">NOVA Маркет <button class="btn-sm btn-ghost" id="sell-open-btn" style="width:auto;">+ Продати</button></div>' +
+      '<div class="section-label" style="margin-top:20px; margin-bottom:0;">' + APP_NAME + ' Маркет <button class="btn-sm btn-ghost" id="sell-open-btn" style="width:auto;">+ Продати</button></div>' +
+      '<div class="field" style="margin-top:12px; margin-bottom:0;"><input type="text" id="market-search" placeholder="🔍 Пошук товару…" value="' + escapeHtml(state.marketSearch || "") + '"></div>' +
       '<div class="market-tabs">' +
-        '<div class="mtab' + (state.marketTab==="catalog"?" active":"") + '" data-tab="catalog">Каталог</div>' +
+        '<div class="mtab' + (state.marketTab==="catalog"?" active":"") + '" data-tab="catalog">Каталог (' + CATALOG.length + ')</div>' +
         '<div class="mtab' + (state.marketTab==="community"?" active":"") + '" data-tab="community">Від гравців</div>' +
         '<div class="mtab' + (state.marketTab==="mine"?" active":"") + '" data-tab="mine">Мої оголошення</div>' +
       '</div>' +
@@ -1771,6 +2107,16 @@
     body.querySelectorAll(".mtab").forEach(function(el){
       el.addEventListener("click", function(){ state.marketTab = el.getAttribute("data-tab"); render(); });
     });
+    var searchInput = body.querySelector("#market-search");
+    var searchTimer = null;
+    searchInput.addEventListener("input", function(){
+      clearTimeout(searchTimer);
+      var val = searchInput.value;
+      searchTimer = setTimeout(function(){
+        state.marketSearch = val;
+        loadMarketContent(body.querySelector("#market-content"));
+      }, 200);
+    });
 
     loadMarketContent(body.querySelector("#market-content"));
     return wrap;
@@ -1778,20 +2124,29 @@
 
   async function loadMarketContent(container){
     container.innerHTML = '<div class="empty-state" style="padding:30px 10px;"><span class="spinner dark" style="display:inline-block;"></span></div>';
+    var query = (state.marketSearch || "").trim().toLowerCase();
+
     if(state.marketTab === "catalog"){
+      var items = CATALOG;
+      if(query) items = items.filter(function(p){ return p.name.toLowerCase().indexOf(query) !== -1; });
       var grid = document.createElement("div");
       grid.className = "grid";
-      CATALOG.forEach(function(p){
-        grid.appendChild(productCardEl({
-          name: p.name, price: p.price, emoji: p.emoji, sellerLabel: "NOVA Маркет",
-          onBuy: function(qty){ buyCatalogItem(p, qty); }
-        }));
-      });
+      if(items.length === 0){
+        grid.innerHTML = '<div class="empty-state">Нічого не знайдено за запитом «' + escapeHtml(query) + '»</div>';
+      } else {
+        items.forEach(function(p){
+          grid.appendChild(productCardEl({
+            name: p.name, price: p.price, emoji: p.emoji, sellerLabel: APP_NAME + " Маркет",
+            onBuy: function(qty){ buyCatalogItem(p, qty); }
+          }));
+        });
+      }
       container.innerHTML = ""; container.appendChild(grid);
       return;
     }
 
     var all = await getAllListings(state.marketTab === "mine");
+    if(query) all = all.filter(function(l){ return (l.title||"").toLowerCase().indexOf(query) !== -1; });
     if(state.marketTab === "community"){
       var mine = state.email;
       var others = all.filter(function(l){ return l.sellerEmail !== mine; });
@@ -1930,7 +2285,7 @@
 
     submitBtn.addEventListener("click", async function(){
       var title = titleInput.value.trim();
-      var price = parseFloat(priceInput.value);
+      var price = readAmount(priceInput);
       if(!title){ errEl.textContent = "Введіть назву товару"; return; }
       if(!price || price <= 0){ errEl.textContent = "Введіть коректну ціну"; return; }
 
@@ -1986,106 +2341,6 @@
     return overlay;
   }
 
-  // ---------- earn money mini-game (solve multiplication) ----------
-  function renderEarnModal(){
-    var overlay = document.createElement("div");
-    overlay.className = "overlay";
-    var modal = document.createElement("div");
-    modal.className = "modal";
-
-    var currentTierIdx = 0;
-    var a = 0, b = 0, correctAnswer = 0;
-
-    function newProblem(tierIdx){
-      var tier = EARN_TIERS[tierIdx];
-      a = tier.min + Math.floor(Math.random() * (tier.max - tier.min + 1));
-      b = tier.min + Math.floor(Math.random() * (tier.max - tier.min + 1));
-      correctAnswer = a * b;
-    }
-    newProblem(currentTierIdx);
-
-    function tierChipsHtml(){
-      var html = "";
-      EARN_TIERS.forEach(function(t, i){
-        html += '<div class="amount-chip' + (i===currentTierIdx ? " active" : "") + '" data-tier="' + i + '" style="cursor:pointer;">' + t.label + ' · +' + fmt(t.reward) + '</div>';
-      });
-      return html;
-    }
-
-    modal.innerHTML =
-      '<div class="modal-handle"></div>' +
-      '<div class="modal-header"><h2>🧮 Заробити гроші</h2><button class="close-x" id="modal-close">&times;</button></div>' +
-      '<div class="info-card-sub" style="margin-bottom:10px;">Оберіть складність — чим більша винагорода, тим складніший приклад.</div>' +
-      '<div class="chip-row" id="tier-chips">' + tierChipsHtml() + '</div>' +
-      '<div class="info-card" style="margin-top:16px; text-align:center;">' +
-        '<div style="font-size:28px; font-weight:800; font-family:\'JetBrains Mono\',monospace;" id="earn-problem">' + a + ' × ' + b + ' = ?</div>' +
-      '</div>' +
-      '<div class="field" style="margin-top:14px;"><input type="number" id="earn-answer" placeholder="Ваша відповідь" inputmode="numeric"></div>' +
-      '<div class="err-msg" id="earn-error"></div>' +
-      '<button class="btn btn-primary" id="earn-submit"><span id="earn-submit-label">Перевірити</span></button>';
-    overlay.appendChild(modal);
-
-    var problemEl = modal.querySelector("#earn-problem");
-    var answerInput = modal.querySelector("#earn-answer");
-    var errEl = modal.querySelector("#earn-error");
-    var submitBtn = modal.querySelector("#earn-submit");
-    var submitLabel = modal.querySelector("#earn-submit-label");
-    var chipsWrap = modal.querySelector("#tier-chips");
-
-    function refreshChips(){
-      chipsWrap.innerHTML = tierChipsHtml();
-      chipsWrap.querySelectorAll(".amount-chip").forEach(function(el){
-        el.addEventListener("click", function(){
-          currentTierIdx = parseInt(el.getAttribute("data-tier"), 10);
-          newProblem(currentTierIdx);
-          problemEl.textContent = a + " × " + b + " = ?";
-          answerInput.value = "";
-          errEl.textContent = "";
-          refreshChips();
-        });
-      });
-    }
-    refreshChips();
-
-    overlay.addEventListener("click", function(e){ if(e.target === overlay) closeModal(); });
-    modal.querySelector("#modal-close").addEventListener("click", closeModal);
-    answerInput.addEventListener("input", function(){ errEl.textContent = ""; });
-    answerInput.addEventListener("keydown", function(e){ if(e.key === "Enter"){ e.preventDefault(); submitBtn.click(); } });
-
-    submitBtn.addEventListener("click", async function(){
-      var val = parseInt(answerInput.value, 10);
-      if(isNaN(val)){ errEl.textContent = "Введіть відповідь"; return; }
-
-      if(val !== correctAnswer){
-        errEl.textContent = "Неправильно. Спробуйте новий приклад";
-        newProblem(currentTierIdx);
-        problemEl.textContent = a + " × " + b + " = ?";
-        answerInput.value = "";
-        return;
-      }
-
-      submitBtn.disabled = true; answerInput.disabled = true;
-      submitLabel.innerHTML = '<span class="spinner"></span>';
-
-      var reward = EARN_TIERS[currentTierIdx].reward;
-      var fresh = await getUser(state.email);
-      if(!fresh){ showToast("Помилка синхронізації", "error"); closeModal(); return; }
-      fresh.balance = Math.round((fresh.balance + reward) * 100) / 100;
-      fresh.transactions.push({id:uid(), kind:"earn_math", amount: reward, date: Date.now(), purpose:"Приклад на " + EARN_TIERS[currentTierIdx].label.toLowerCase()});
-      addMoneyProgress(fresh, reward);
-
-      var ok = await saveUser(fresh);
-      if(!ok){ showToast("Не вдалося зарахувати винагороду", "error"); submitBtn.disabled=false; answerInput.disabled=false; submitLabel.textContent="Перевірити"; return; }
-
-      state.user = fresh;
-      closeModal();
-      showToast("Правильно! +" + fmt(reward));
-    });
-
-    setTimeout(function(){ answerInput.focus(); }, 300);
-    return overlay;
-  }
-
   // ---------- reset account confirm ----------
   function renderResetConfirmModal(){
     var overlay = document.createElement("div");
@@ -2123,6 +2378,7 @@
       fresh.vip = false; fresh.vipSince = null; fresh.vipLastPayout = null;
       fresh.mega = false; fresh.megaSince = null; fresh.megaLevelBonus = 0;
       fresh.marshalLastPayout = null;
+      fresh.lastDailyBonusAt = null;
       fresh.savings = {balance: 0, lastGrowthAt: null};
 
       var ok = await saveUser(fresh);
@@ -2234,7 +2490,7 @@
     attachNumpad(amountInput, amountInput);
 
     function updatePreview(){
-      var amt = parseFloat(amountInput.value);
+      var amt = readAmount(amountInput);
       if(!amt || amt <= 0){ previewEl.textContent = ""; return; }
       var pct = companyPayoutPercent(amt);
       var payout = amt * pct;
@@ -2245,7 +2501,7 @@
     var investBtn = container.querySelector("#company-invest-btn");
     var investLabel = container.querySelector("#company-invest-label");
     investBtn.addEventListener("click", async function(){
-      var amt = parseFloat(amountInput.value);
+      var amt = readAmount(amountInput);
       if(!amt || amt <= 0){ errEl.textContent = "Введіть суму вкладу"; return; }
 
       investBtn.disabled = true; amountInput.disabled = true;
@@ -2281,6 +2537,72 @@
       showToast("Вкладено " + fmt(amt) + ", отримано +" + fmt(payout));
       closeModal();
     });
+  }
+
+  // ---------- daily gift box ----------
+  function renderDailyModal(){
+    var overlay = document.createElement("div");
+    overlay.className = "overlay";
+    var modal = document.createElement("div");
+    modal.className = "modal";
+
+    var ready = canClaimDaily(state.user);
+    var nextAt = state.user.lastDailyBonusAt ? state.user.lastDailyBonusAt + DAILY_BONUS_PERIOD_MS : 0;
+    var remain = nextAt - Date.now();
+
+    modal.innerHTML =
+      '<div class="modal-handle"></div>' +
+      '<div class="modal-header"><h2>🎁 Щоденний бонус</h2><button class="close-x" id="modal-close">&times;</button></div>' +
+      '<div style="text-align:center; padding:10px 0 6px;">' +
+        '<div id="gift-box" style="font-size:72px; cursor:' + (ready?"pointer":"default") + '; transition:transform .2s ease; user-select:none;">🎁</div>' +
+        '<div id="gift-status" style="margin-top:14px; font-size:14px; color:var(--text-2);">' +
+          (ready ? "Натисніть на подарунок, щоб відкрити" : "Наступний подарунок через <b id=\"daily-cooldown\" style=\"color:var(--text-0);\">" + formatDuration(remain) + "</b>") +
+        '</div>' +
+      '</div>';
+    overlay.appendChild(modal);
+
+    overlay.addEventListener("click", function(e){ if(e.target === overlay) closeModal(); });
+    modal.querySelector("#modal-close").addEventListener("click", closeModal);
+
+    if(ready){
+      var box = modal.querySelector("#gift-box");
+      var status = modal.querySelector("#gift-status");
+      var opened = false;
+      box.addEventListener("click", async function(){
+        if(opened) return;
+        opened = true;
+        box.style.transform = "scale(1.3) rotate(-8deg)";
+        status.textContent = "Відкриваємо…";
+
+        var fresh = await getUser(state.email);
+        if(!fresh){ showToast("Помилка синхронізації", "error"); closeModal(); return; }
+        if(!canClaimDaily(fresh)){ showToast("Бонус вже отримано сьогодні"); closeModal(); return; }
+
+        var reward = rollDailyBonus();
+        var isJackpot = reward >= DAILY_BONUS_RANGE[1] * 0.75;
+
+        setTimeout(async function(){
+          box.textContent = isJackpot ? "🌟" : "✨";
+          box.style.transform = "scale(1.5)";
+
+          fresh.balance = Math.round((fresh.balance + reward) * 100) / 100;
+          fresh.lastDailyBonusAt = Date.now();
+          fresh.transactions.push({id:uid(), kind:"daily_bonus", amount: reward, date: Date.now(), purpose: isJackpot ? "Щоденний бонус 🌟 Джекпот!" : "Щоденний бонус"});
+          addMoneyProgress(fresh, reward);
+          await saveUser(fresh);
+          state.user = fresh;
+
+          status.innerHTML = isJackpot
+            ? '<b style="color:#f3dfa8; font-size:16px;">🌟 ДЖЕКПОТ! +' + fmt(reward) + '</b>'
+            : '<b style="color:var(--success); font-size:16px;">+' + fmt(reward) + '</b>';
+
+          showToast(isJackpot ? "Джекпот! +" + fmt(reward) : "Бонус отримано: +" + fmt(reward), isJackpot ? "gold" : undefined);
+          setTimeout(function(){ closeModal(); }, 1400);
+        }, 500);
+      });
+    }
+
+    return overlay;
   }
 
   // ---------- transfer modal ----------
@@ -2319,7 +2641,7 @@
     submitBtn.addEventListener("click", async function(){
       errEl.textContent = ""; cardInput.classList.remove("error"); amountInput.classList.remove("error");
       var cardDigits = cardDigitsOnly(cardInput.value);
-      var amount = parseFloat(amountInput.value);
+      var amount = readAmount(amountInput);
 
       if(cardDigits.length !== 16){ errEl.textContent = "Введіть коректний номер картки (16 цифр)"; cardInput.classList.add("error"); return; }
       if(!amount || amount <= 0){ errEl.textContent = "Введіть суму переказу"; amountInput.classList.add("error"); return; }
@@ -2401,7 +2723,7 @@
     amountInput.addEventListener("input", function(){ errEl.textContent = ""; amountInput.classList.remove("error"); });
 
     submitBtn.addEventListener("click", async function(){
-      var amount = parseFloat(amountInput.value);
+      var amount = readAmount(amountInput);
       if(!amount || amount <= 0){ errEl.textContent = "Введіть суму поповнення"; amountInput.classList.add("error"); return; }
       submitBtn.disabled = true; amountInput.disabled = true;
       submitLabel.innerHTML = '<span class="spinner"></span>';
