@@ -314,6 +314,15 @@
     margin:0 -20px; padding:8px 20px 26px;
     background:#000; border-radius:0 0 30px 30px;
   }
+  .card-stack{position:relative; margin-top:40px; height:188px;}
+  .card-stack .card-visual{position:absolute; left:0; right:0; margin-top:0;}
+  .card-stack .card-back{top:-34px; transform:scale(.95); opacity:.92; filter:brightness(.85); z-index:1; pointer-events:none;}
+  .card-stack .card-front{top:0; z-index:2;}
+  .add-card-pill{
+    width:auto; display:inline-flex; margin-top:14px; padding:9px 16px; font-size:12.5px;
+    background:rgba(255,255,255,.08); border-color:rgba(255,255,255,.16); color:#fff;
+  }
+  .add-card-pill:hover{background:rgba(255,255,255,.14);}
   .home-sheet{
     margin:0 -20px; padding:22px 20px 110px; min-height:60vh;
     background:#fff; color:#111; border-radius:30px 30px 0 0;
@@ -548,6 +557,11 @@
     for(var i=0;i<CARD_TIERS.length;i++){ if(CARD_TIERS[i].id === id) return CARD_TIERS[i]; }
     return CARD_TIERS[0];
   }
+  var MAX_CARDS_PER_USER = 5;
+  function activeCard(user){
+    var found = (user.cards||[]).filter(function(c){ return c.id === user.activeCardId; })[0];
+    return found || (user.cards && user.cards[0]) || {digits:"", label:"Основна", tier:"standard"};
+  }
   var MEGA_VIP_LEVEL_BONUS = 20;
   var MEGA_VIP_DAILY_PAYOUT = 100000;
   var SAVINGS_DAILY_RATE = 0.20; // +20% per day, compounded
@@ -709,6 +723,19 @@
     if(user.lastDailyBonusAt === undefined) user.lastDailyBonusAt = null;
     if(user.cardTier === undefined) user.cardTier = "standard";
     if(user.ownedTiers === undefined) user.ownedTiers = ["standard"];
+    if(!Array.isArray(user.cards) || user.cards.length === 0){
+      user.cards = [{
+        id: "c0",
+        digits: (user.card || "").replace(/\s/g,""),
+        label: "Основна",
+        tier: user.cardTier || "standard",
+        createdAt: user.createdAt || Date.now()
+      }];
+    }
+    if(user.activeCardId === undefined || !user.cards.some(function(c){ return c.id === user.activeCardId; })){
+      user.activeCardId = user.cards[0].id;
+    }
+    if(!Array.isArray(user.friends)) user.friends = [];
     if(user.savings === undefined) user.savings = {balance: 0, lastGrowthAt: null};
     if(!user.savings) user.savings = {balance: 0, lastGrowthAt: null};
     if(user.savings.balance === undefined) user.savings.balance = 0;
@@ -1162,7 +1189,7 @@
       else if(state.modal.type === "resetConfirm") modalRoot.appendChild(renderResetConfirmModal());
       else if(state.modal.type === "company") modalRoot.appendChild(renderCompanyModal());
       else if(state.modal.type === "daily") modalRoot.appendChild(renderDailyModal());
-      else if(state.modal.type === "cardTier") modalRoot.appendChild(renderCardTierModal());
+      else if(state.modal.type === "cards") modalRoot.appendChild(renderCardsModal());
     }
   }
   function closeModal(){ state.modal = null; render(); }
@@ -1505,7 +1532,32 @@
     var isMarshal = (state.email === MARSHAL_EMAIL);
     var isAdminAcc = (state.email === ADMIN_EMAIL);
     var marshalFlashClass = (state.marshalFlash ? ' marshal-flash' : '');
-    var tierCfg = cardTierById(user.cardTier || "standard");
+    var tierCfg = cardTierById(activeCard(user).tier || "standard");
+
+    function cardFaceHtml(cardObj, opts){
+      opts = opts || {};
+      var t = cardTierById(cardObj.tier || "standard");
+      var isSpecialTop = opts.isFront && (isMarshal || isAdminAcc);
+      var extraClass = isSpecialTop ? (isMarshal ? ' marshal-card' + marshalFlashClass : ' admin-card') : '';
+      var attrs = opts.isFront ? ' id="home-card"' : '';
+      var pointer = opts.clickable ? ' cursor:pointer;' : '';
+      return '<div class="card-visual' + (opts.stackClass ? ' ' + opts.stackClass : '') + extraClass + '"' + attrs +
+        ' style="background:' + t.face + ';' + pointer + '">' +
+        '<div class="card-top-row"><div class="chip"></div><div class="card-brand-mark" style="display:flex; align-items:center; gap:6px; color:' + t.ink + ';"><span style="width:20px;height:20px;border-radius:6px;overflow:hidden;display:inline-flex;">' + LOGO_IMG_TAG + '</span>' + (isSpecialTop && isMarshal ? "MARSHAL" : APP_NAME) + '</div></div>' +
+        '<div><div class="card-number-row"><div class="card-number num" style="color:' + t.ink + ';">' + escapeHtml((cardObj.digits||"").replace(/(.{4})/g,"$1 ").trim()) + '</div>' +
+        (opts.isFront ? '<button class="copy-btn" id="copy-btn">' + ICONS.copy + '<span id="copy-label">Копія</span></button>' : '') + '</div>' +
+        '<div class="card-bottom-row"><div class="card-holder" style="color:' + t.inkSoft + ';">' + escapeHtml(cardObj.label || "Картка") + (isSpecialTop ? (isMarshal ? ' · MARSHAL' : ' · ADMIN') : '') + ' · ' + t.name.toUpperCase() + '</div></div></div>' +
+      '</div>';
+    }
+
+    var otherCard = (user.cards || []).filter(function(c){ return c.id !== user.activeCardId; })[0];
+    var cardStackHtml = otherCard
+      ? '<div class="card-stack">' +
+          cardFaceHtml(otherCard, {stackClass:"card-back"}) +
+          cardFaceHtml(activeCard(user), {isFront:true, stackClass:"card-front", clickable:true}) +
+        '</div>'
+      : cardFaceHtml(activeCard(user), {isFront:true, clickable:true});
+
     rest.innerHTML =
       '<div class="home-hero">' +
       '<div class="top-grid">' +
@@ -1515,13 +1567,8 @@
         '<div class="progress-track"><div class="progress-fill" style="width:' + lvlPct + '%"></div></div></div>' +
       '</div></div>' +
 
-      '<div class="card-visual' + (isMarshal ? ' marshal-card' + marshalFlashClass : '') + (isAdminAcc ? ' admin-card' : '') + '" id="home-card"' +
-        ' style="background:' + tierCfg.face + '; cursor:pointer;">' +
-        '<div class="card-top-row"><div class="chip"></div><div class="card-brand-mark" style="display:flex; align-items:center; gap:6px; color:' + tierCfg.ink + ';"><span style="width:20px;height:20px;border-radius:6px;overflow:hidden;display:inline-flex;">' + LOGO_IMG_TAG + '</span>' + (isMarshal ? "MARSHAL" : APP_NAME) + '</div></div>' +
-        '<div><div class="card-number-row"><div class="card-number num" style="color:' + tierCfg.ink + ';">' + escapeHtml(user.card) + '</div>' +
-        '<button class="copy-btn" id="copy-btn">' + ICONS.copy + '<span id="copy-label">Копія</span></button></div>' +
-        '<div class="card-bottom-row"><div class="card-holder" style="color:' + tierCfg.inkSoft + ';">' + escapeHtml(user.email.split("@")[0]) + (isMarshal ? ' · MARSHAL' : (isAdminAcc ? ' · ADMIN' : '')) + ' · ' + tierCfg.name.toUpperCase() + '</div></div></div>' +
-      '</div>' +
+      cardStackHtml +
+      '<button class="btn-sm btn-ghost add-card-pill" id="add-card-btn">+ Додати картку</button>' +
       '</div>' +
 
       '<div class="actions-row">' +
@@ -1569,12 +1616,17 @@
     var savWd = wrap.querySelector("#savings-withdraw-btn");
     if(savWd) savWd.addEventListener("click", function(){ state.modal = {type:"savings", mode:"withdraw"}; render(); });
 
-    wrap.querySelector("#copy-btn").addEventListener("click", function(e){
-      e.stopPropagation(); // don't open the tier picker when copying
-      copyCardNumber(user.card, wrap.querySelector("#copy-btn"), wrap.querySelector("#copy-label"));
-    });
+    var copyBtnEl = wrap.querySelector("#copy-btn");
+    if(copyBtnEl){
+      copyBtnEl.addEventListener("click", function(e){
+        e.stopPropagation(); // don't open the cards modal when copying
+        copyCardNumber(activeCard(user).digits, copyBtnEl, wrap.querySelector("#copy-label"));
+      });
+    }
     var homeCard = wrap.querySelector("#home-card");
-    if(homeCard) homeCard.addEventListener("click", function(){ state.modal = {type:"cardTier"}; render(); });
+    if(homeCard) homeCard.addEventListener("click", function(){ state.modal = {type:"cards"}; render(); });
+    var addCardBtn = wrap.querySelector("#add-card-btn");
+    if(addCardBtn) addCardBtn.addEventListener("click", function(e){ e.stopPropagation(); state.modal = {type:"cards", startCreate:true}; render(); });
     return wrap;
   }
 
@@ -1976,7 +2028,7 @@
     body.innerHTML =
       '<div class="section-label" style="margin-top:20px;">Профіль</div>' +
       '<div class="info-card"><div class="info-card-title">' + escapeHtml(user.email) + '</div>' +
-      '<div class="info-card-sub">Картка: ' + escapeHtml(user.card) + '<br>Рівень: ' + user.level + ' · Зібрано ' + formatMoney(user.levelProgress||0) + ' з ' + fmt(requiredForLevel(user.level)) + ' до наступного рівня<br>Кредитний ліміт: ' + fmt(maxLoanForLevel(user.level)) + '<br>Погашено кредитів: ' + user.loanRepaid + '</div>' +
+      '<div class="info-card-sub">Картка: ' + escapeHtml(maskCard(activeCard(user).digits)) + '<br>Рівень: ' + user.level + ' · Зібрано ' + formatMoney(user.levelProgress||0) + ' з ' + fmt(requiredForLevel(user.level)) + ' до наступного рівня<br>Кредитний ліміт: ' + fmt(maxLoanForLevel(user.level)) + '<br>Погашено кредитів: ' + user.loanRepaid + '</div>' +
       '<div class="progress-track" style="margin-top:10px;"><div class="progress-fill" style="width:' + Math.max(0,Math.min(100,((user.levelProgress||0)/requiredForLevel(user.level))*100)) + '%"></div></div></div>' +
 
       spendingBreakdownHtml(user) +
@@ -2727,141 +2779,241 @@
     return overlay;
   }
 
-  // ---------- card tier picker modal ----------
-  function renderCardTierModal(){
+  // ---------- cards modal: list / rename? no / add (up to 5) / delete / switch active ----------
+  function renderCardsModal(){
     var overlay = document.createElement("div");
     overlay.className = "overlay";
     var modal = document.createElement("div");
     modal.className = "modal";
-
-    var user = state.user;
-    var owned = user.ownedTiers || ["standard"];
-    var startIdx = Math.max(0, CARD_TIERS.map(function(t){return t.id;}).indexOf(user.cardTier || "standard"));
-    var current = startIdx;
-
-    var cardsHtml = CARD_TIERS.map(function(t, i){
-      return '<div class="tier-card' + (i===startIdx ? ' is-active' : '') + '" data-idx="' + i + '" style="background:' + t.face + '; color:' + t.ink + ';">' +
-        '<div class="tier-holder">' + escapeHtml(user.email.split("@")[0]) + '</div>' +
-        '<div><div class="tier-brand">ЮНР<small>' + t.name.toUpperCase() + '</small></div></div>' +
-        '<div class="tier-wave">((( </div>' +
-      '</div>';
-    }).join("");
-
-    var dotsHtml = CARD_TIERS.map(function(t,i){
-      return '<div class="tier-dot' + (i===startIdx ? ' on' : '') + '" data-dot="' + i + '"></div>';
-    }).join("");
-
     modal.innerHTML =
       '<div class="modal-handle"></div>' +
-      '<div class="modal-header" style="margin-bottom:6px;"><button class="close-x" id="modal-close" style="margin-left:auto;">&times;</button></div>' +
-      '<div class="tier-screen">' +
-        '<div class="tier-head">' +
-          '<h2 id="tier-name"></h2>' +
-          '<div class="tier-price" id="tier-price"></div>' +
-          '<div id="tier-owned"></div>' +
-        '</div>' +
-        '<div class="tier-track" id="tier-track">' + cardsHtml + '</div>' +
-        '<div class="tier-dots" id="tier-dots">' + dotsHtml + '</div>' +
-        '<button class="btn btn-primary" id="tier-action" style="background:#000; color:#fff;"><span id="tier-action-label">Обрати</span></button>' +
-      '</div>';
+      '<div class="modal-header"><h2>Мої картки</h2><button class="close-x" id="modal-close">&times;</button></div>' +
+      '<div id="cards-body"></div>';
     overlay.appendChild(modal);
-
     overlay.addEventListener("click", function(e){ if(e.target === overlay) closeModal(); });
     modal.querySelector("#modal-close").addEventListener("click", closeModal);
 
-    var track = modal.querySelector("#tier-track");
-    var nameEl = modal.querySelector("#tier-name");
-    var priceEl = modal.querySelector("#tier-price");
-    var ownedEl = modal.querySelector("#tier-owned");
-    var actionBtn = modal.querySelector("#tier-action");
-    var actionLabel = modal.querySelector("#tier-action-label");
+    var body = modal.querySelector("#cards-body");
 
-    function syncUI(){
-      var t = CARD_TIERS[current];
-      var isOwned = owned.indexOf(t.id) !== -1;
-      var isActive = (user.cardTier || "standard") === t.id;
-      nameEl.textContent = t.name;
-      priceEl.innerHTML = t.price === 0 ? t.sub : '<b>' + fmt(t.price) + '</b> / одноразово';
-      ownedEl.innerHTML = isOwned ? '<span class="tier-owned-badge">✓ У вашій колекції</span>' : '';
-      actionLabel.textContent = isActive ? "Вже активна" : (isOwned ? "Зробити активною" : "Придбати " + t.name);
-      actionBtn.disabled = isActive;
-      actionBtn.style.opacity = isActive ? ".5" : "1";
+    function renderList(){
+      var user = state.user;
+      var cards = user.cards || [];
+      var rows = cards.map(function(c){
+        var t = cardTierById(c.tier || "standard");
+        var isActive = c.id === user.activeCardId;
+        return '<div class="my-listing" data-card-id="' + c.id + '" style="cursor:pointer; align-items:center;' + (isActive ? ' border:1px solid #8a4dff;' : '') + '">' +
+          '<div style="width:34px;height:22px;border-radius:5px;flex-shrink:0; background:' + t.face + '; margin-right:10px;"></div>' +
+          '<div class="info"><div class="title">' + escapeHtml(c.label) + (isActive ? ' <span style="color:#8a4dff; font-weight:800;">· активна</span>' : '') + '</div>' +
+          '<div class="price">' + (c.digits||"").replace(/(.{4})/g,"$1 ").trim() + ' · ' + t.name + '</div></div>' +
+          (cards.length > 1 ? '<button class="del-btn" data-del-id="' + c.id + '" title="Видалити">&times;</button>' : '') +
+        '</div>';
+      }).join("");
 
-      modal.querySelectorAll(".tier-card").forEach(function(el, i){
-        el.classList.toggle("is-active", i === current);
+      body.innerHTML =
+        '<div style="display:flex; flex-direction:column; gap:8px;">' + rows + '</div>' +
+        (cards.length < MAX_CARDS_PER_USER
+          ? '<button class="btn btn-primary" id="new-card-btn" style="margin-top:16px;">+ Додати картку (' + cards.length + '/' + MAX_CARDS_PER_USER + ')</button>'
+          : '<div class="info-card-sub" style="margin-top:16px; text-align:center;">Досягнуто ліміт — максимум ' + MAX_CARDS_PER_USER + ' карток</div>');
+
+      body.querySelectorAll(".my-listing").forEach(function(row){
+        row.addEventListener("click", async function(e){
+          if(e.target.closest(".del-btn")) return;
+          var id = row.getAttribute("data-card-id");
+          if(id === state.user.activeCardId) return;
+          var fresh = await getUser(state.email);
+          if(!fresh){ showToast("Помилка синхронізації", "error"); return; }
+          fresh.activeCardId = id;
+          await saveUser(fresh);
+          state.user = fresh;
+          renderList();
+          showToast("Активну картку змінено");
+        });
       });
-      modal.querySelectorAll(".tier-dot").forEach(function(el, i){
-        el.classList.toggle("on", i === current);
+      body.querySelectorAll(".del-btn").forEach(function(btn){
+        btn.addEventListener("click", async function(e){
+          e.stopPropagation();
+          var id = btn.getAttribute("data-del-id");
+          var fresh = await getUser(state.email);
+          if(!fresh || fresh.cards.length <= 1) return;
+          var removed = fresh.cards.find(function(c){ return c.id === id; });
+          fresh.cards = fresh.cards.filter(function(c){ return c.id !== id; });
+          if(fresh.activeCardId === id) fresh.activeCardId = fresh.cards[0].id;
+          if(removed) await storageDelete("cardindex:" + removed.digits);
+          await saveUser(fresh);
+          state.user = fresh;
+          renderList();
+          showToast("Картку видалено");
+        });
+      });
+
+      var newBtn = body.querySelector("#new-card-btn");
+      if(newBtn) newBtn.addEventListener("click", renderCreateStep);
+    }
+
+    function renderCreateStep(){
+      var selectedTierIdx = 0;
+      body.innerHTML =
+        '<div class="field"><div class="field-label">Назва картки</div>' +
+        '<input type="text" id="new-card-name" placeholder="Напр. На покупки" maxlength="24"></div>' +
+        '<div class="field-label" style="margin-top:6px;">Дизайн</div>' +
+        '<div class="tier-track" id="create-tier-track" style="margin:6px 0 0;">' +
+          CARD_TIERS.map(function(t, i){
+            return '<div class="tier-card' + (i===0 ? ' is-active' : '') + '" data-idx="' + i + '" style="background:' + t.face + '; color:' + t.ink + '; height:220px; flex-basis:150px;">' +
+              '<div class="tier-holder">' + escapeHtml(state.email.split("@")[0]) + '</div>' +
+              '<div><div class="tier-brand" style="font-size:20px;">ЮНР<small>' + t.name.toUpperCase() + '</small></div></div>' +
+            '</div>';
+          }).join("") +
+        '</div>' +
+        '<div class="tier-dots" id="create-tier-dots">' +
+          CARD_TIERS.map(function(t,i){ return '<div class="tier-dot' + (i===0?' on':'') + '" data-dot="' + i + '"></div>'; }).join("") +
+        '</div>' +
+        '<div class="info-card-sub" id="create-tier-price" style="text-align:center; margin:-6px 0 14px;"></div>' +
+        '<div class="err-msg" id="create-card-error"></div>' +
+        '<button class="btn btn-primary" id="create-card-submit"><span id="create-card-label">Створити</span></button>' +
+        '<button class="btn btn-ghost" id="create-card-cancel" style="margin-top:8px;">Назад</button>';
+
+      var track = body.querySelector("#create-tier-track");
+      var priceEl = body.querySelector("#create-tier-price");
+      var errEl = body.querySelector("#create-card-error");
+
+      var owned = state.user.ownedTiers || ["standard"];
+      function syncTier(){
+        var t = CARD_TIERS[selectedTierIdx];
+        var isOwned = owned.indexOf(t.id) !== -1;
+        priceEl.innerHTML = (t.price === 0)
+          ? t.sub
+          : (isOwned
+              ? '<span style="color:var(--success); font-weight:800;">✓ Дизайн уже куплено — безкоштовно</span>'
+              : 'Вартість: <b style="color:var(--text-0);">' + fmt(t.price) + '</b>');
+        body.querySelectorAll(".tier-card").forEach(function(el,i){ el.classList.toggle("is-active", i===selectedTierIdx); });
+        body.querySelectorAll(".tier-dot").forEach(function(el,i){ el.classList.toggle("on", i===selectedTierIdx); });
+      }
+      syncTier();
+
+      var scrollTimer = null;
+      track.addEventListener("scroll", function(){
+        clearTimeout(scrollTimer);
+        scrollTimer = setTimeout(function(){
+          var cards = body.querySelectorAll(".tier-card");
+          var rect = track.getBoundingClientRect();
+          var centerX = rect.left + rect.width/2;
+          var best=0, bestDist=Infinity;
+          cards.forEach(function(el,i){
+            var r = el.getBoundingClientRect();
+            var d = Math.abs((r.left+r.width/2) - centerX);
+            if(d < bestDist){ bestDist=d; best=i; }
+          });
+          if(best !== selectedTierIdx){ selectedTierIdx = best; syncTier(); }
+        }, 90);
+      });
+      body.querySelectorAll(".tier-dot").forEach(function(dot){
+        dot.addEventListener("click", function(){
+          var idx = parseInt(dot.getAttribute("data-dot"),10);
+          var c = body.querySelector('.tier-card[data-idx="'+idx+'"]');
+          if(c) c.scrollIntoView({behavior:"smooth", block:"nearest", inline:"center"});
+        });
+      });
+
+      body.querySelector("#create-card-cancel").addEventListener("click", renderList);
+
+      body.querySelector("#create-card-submit").addEventListener("click", async function(){
+        var nameInput = body.querySelector("#new-card-name");
+        var name = nameInput.value.trim();
+        if(!name){ errEl.textContent = "Введіть назву картки"; return; }
+
+        var submitBtn = body.querySelector("#create-card-submit");
+        var label = body.querySelector("#create-card-label");
+        submitBtn.disabled = true; label.innerHTML = '<span class="spinner"></span>';
+
+        var fresh = await getUser(state.email);
+        if(!fresh){ showToast("Помилка синхронізації", "error"); closeModal(); return; }
+        if(fresh.cards.length >= MAX_CARDS_PER_USER){ errEl.textContent = "Досягнуто ліміт карток"; submitBtn.disabled=false; label.textContent="Створити"; return; }
+
+        var tier = CARD_TIERS[selectedTierIdx];
+        if(tier.price > 0 && fresh.balance < tier.price){
+          errEl.textContent = "Недостатньо коштів для цього дизайну";
+          submitBtn.disabled=false; label.textContent="Створити"; return;
+        }
+
+        var digits = await generateUniqueCard();
+        var newCard = {id: uid(), digits: digits, label: name, tier: tier.id, createdAt: Date.now()};
+
+        if(tier.price > 0){
+          fresh.balance = Math.round((fresh.balance - tier.price) * 100) / 100;
+          fresh.transactions.push({id:uid(), kind:"card_buy", amount:-tier.price, date: Date.now(), purpose:"Нова картка «" + name + "» (" + tier.name + ")"});
+        }
+        fresh.cards.push(newCard);
+        fresh.activeCardId = newCard.id;
+
+        var ok1 = await saveUser(fresh);
+        var ok2 = await reserveCard(digits, state.email);
+        if(!ok1 || !ok2){ errEl.textContent = "Не вдалося створити картку"; submitBtn.disabled=false; label.textContent="Створити"; return; }
+
+        state.user = fresh;
+        showToast("Картку «" + name + "» створено!", "gold");
+        renderList();
       });
     }
 
-    var scrollTimer = null;
-    track.addEventListener("scroll", function(){
-      clearTimeout(scrollTimer);
-      scrollTimer = setTimeout(function(){
-        var cards = modal.querySelectorAll(".tier-card");
-        var trackRect = track.getBoundingClientRect();
-        var centerX = trackRect.left + trackRect.width/2;
-        var best = 0, bestDist = Infinity;
-        cards.forEach(function(el, i){
-          var r = el.getBoundingClientRect();
-          var d = Math.abs((r.left + r.width/2) - centerX);
-          if(d < bestDist){ bestDist = d; best = i; }
-        });
-        if(best !== current){ current = best; syncUI(); }
-      }, 90);
-    });
-
-    modal.querySelectorAll(".tier-dot").forEach(function(dot){
-      dot.addEventListener("click", function(){
-        var idx = parseInt(dot.getAttribute("data-dot"), 10);
-        var card = modal.querySelector('.tier-card[data-idx="' + idx + '"]');
-        if(card) card.scrollIntoView({behavior:"smooth", block:"nearest", inline:"center"});
-      });
-    });
-
-    actionBtn.addEventListener("click", async function(){
-      var t = CARD_TIERS[current];
-      var isOwned = owned.indexOf(t.id) !== -1;
-
-      actionBtn.disabled = true;
-      actionLabel.innerHTML = '<span class="spinner"></span>';
-
-      var fresh = await getUser(state.email);
-      if(!fresh){ showToast("Помилка синхронізації", "error"); closeModal(); return; }
-      fresh.ownedTiers = fresh.ownedTiers || ["standard"];
-
-      if(!isOwned){
-        if(fresh.balance < t.price){
-          showToast("Недостатньо коштів", "error");
-          actionBtn.disabled = false; syncUI(); return;
-        }
-        fresh.balance = Math.round((fresh.balance - t.price) * 100) / 100;
-        fresh.ownedTiers.push(t.id);
-        fresh.transactions.push({id:uid(), kind:"card_buy", amount:-t.price, date: Date.now(), purpose:"Картка " + t.name});
-      }
-      fresh.cardTier = t.id;
-
-      var ok = await saveUser(fresh);
-      if(!ok){ showToast("Не вдалося зберегти", "error"); actionBtn.disabled=false; syncUI(); return; }
-
-      state.user = fresh;
-      owned = fresh.ownedTiers;
-      user = fresh;
-      closeModal();
-      showToast(isOwned ? ("Активовано: " + t.name) : ("Придбано картку " + t.name + "!"), "gold");
-    });
-
-    syncUI();
-    setTimeout(function(){
-      var card = modal.querySelector('.tier-card[data-idx="' + startIdx + '"]');
-      if(card) card.scrollIntoView({behavior:"auto", block:"nearest", inline:"center"});
-    }, 60);
-
+    renderList();
     return overlay;
   }
 
   // ---------- transfer modal ----------
+  // ---------- shared transfer logic (used by both the friends tab and manual card entry) ----------
+  async function performTransfer(receiverEmail, amount){
+    if(receiverEmail === state.email) return {ok:false, error:"Не можна переказати кошти самому собі"};
+    var sender = await getUser(state.email);
+    if(!sender) return {ok:false, error:"Помилка синхронізації"};
+    if(!amount || amount <= 0) return {ok:false, error:"Введіть суму переказу"};
+    if(amount > sender.balance) return {ok:false, error:"Недостатньо коштів"};
+    var receiver = await getUser(receiverEmail);
+    if(!receiver) return {ok:false, error:"Отримувача не знайдено"};
+
+    sender.balance = Math.round((sender.balance - amount) * 100) / 100;
+    receiver.balance = Math.round((receiver.balance + amount) * 100) / 100;
+    var now = Date.now();
+    var senderCardDigits = activeCard(sender).digits;
+    var receiverCardDigits = activeCard(receiver).digits;
+
+    var txOut = {id: uid(), kind:"transfer_out", amount:-amount, date: now, senderCard: senderCardDigits, receiverCard: receiverCardDigits, purpose:"Переказ коштів"};
+    var txIn = {id: uid(), kind:"transfer_in", amount: amount, date: now, senderCard: senderCardDigits, receiverCard: receiverCardDigits, purpose:"Переказ коштів"};
+    sender.transactions.push(txOut);
+    receiver.transactions.push(txIn);
+    addMoneyProgress(receiver, amount);
+
+    var ok1 = await saveUser(sender);
+    var ok2 = await saveUser(receiver);
+    if(!ok1 || !ok2) return {ok:false, error:"Не вдалося виконати переказ"};
+
+    state.user = sender;
+    return {ok:true, txOut: txOut};
+  }
+
+  async function addFriendByEmail(rawEmail){
+    var norm = normalizeEmail(rawEmail);
+    if(!isValidEmail(norm)) return {ok:false, error:"Введіть коректний email"};
+    if(norm === state.email) return {ok:false, error:"Це ваш власний email"};
+    var fresh = await getUser(state.email);
+    if(!fresh) return {ok:false, error:"Помилка синхронізації"};
+    fresh.friends = fresh.friends || [];
+    if(fresh.friends.some(function(f){ return f.email === norm; })) return {ok:false, error:"Цей користувач вже у друзях"};
+    var target = await getUser(norm);
+    if(!target) return {ok:false, error:"Гравця з таким email ще не існує"};
+    fresh.friends.push({email: norm, addedAt: Date.now()});
+    var ok = await saveUser(fresh);
+    if(!ok) return {ok:false, error:"Не вдалося зберегти"};
+    state.user = fresh;
+    return {ok:true};
+  }
+
+  function avatarColorFor(str){
+    var palette = ["#8a4dff","#ff3d8a","#30d158","#ffb020","#0aa8ff","#c9a961"];
+    var sum = 0;
+    for(var i=0;i<str.length;i++) sum += str.charCodeAt(i);
+    return palette[sum % palette.length];
+  }
+
   function renderTransferModal(){
     var overlay = document.createElement("div");
     overlay.className = "overlay";
@@ -2869,87 +3021,163 @@
     modal.className = "modal";
     modal.innerHTML =
       '<div class="modal-handle"></div>' +
-      '<div class="modal-header"><h2>Переказ на картку</h2><button class="close-x" id="modal-close">&times;</button></div>' +
-      '<div class="field"><div class="field-label">Номер картки отримувача</div>' +
-      '<input type="text" id="tr-card" class="num" placeholder="0000 0000 0000 0000" inputmode="numeric" maxlength="19"></div>' +
-      '<div class="field"><div class="field-label">Сума</div>' +
-      '<input type="text" id="tr-amount" placeholder="0" inputmode="none"></div>' +
-      '<div class="err-msg" id="tr-error"></div>' +
-      '<button class="btn btn-primary" id="tr-submit" style="margin-top:8px;"><span id="tr-submit-label">Переказати</span></button>';
+      '<div class="modal-header"><h2>Переказ</h2><button class="close-x" id="modal-close">&times;</button></div>' +
+      '<div class="field" style="margin-bottom:10px;"><input type="text" id="tr-search" placeholder="🔍 Пошук серед друзів"></div>' +
+      '<div class="market-tabs" style="margin-top:0;">' +
+        '<div class="mtab active" data-tr-tab="friends">Друзі</div>' +
+        '<div class="mtab" data-tr-tab="card">За номером картки</div>' +
+      '</div>' +
+      '<div id="tr-body" style="margin-top:14px;"></div>';
     overlay.appendChild(modal);
-
-    var cardInput = modal.querySelector("#tr-card");
-    var amountInput = modal.querySelector("#tr-amount");
-    var errEl = modal.querySelector("#tr-error");
-    var submitBtn = modal.querySelector("#tr-submit");
-    var submitLabel = modal.querySelector("#tr-submit-label");
-
-    cardInput.addEventListener("input", function(){
-      var digits = cardDigitsOnly(cardInput.value).slice(0,16);
-      cardInput.value = digits.replace(/(.{4})/g,"$1 ").trim();
-      errEl.textContent = ""; cardInput.classList.remove("error");
-    });
-    amountInput.addEventListener("input", function(){ errEl.textContent = ""; amountInput.classList.remove("error"); });
 
     overlay.addEventListener("click", function(e){ if(e.target === overlay) closeModal(); });
     modal.querySelector("#modal-close").addEventListener("click", closeModal);
 
-    submitBtn.addEventListener("click", async function(){
-      errEl.textContent = ""; cardInput.classList.remove("error"); amountInput.classList.remove("error");
-      var cardDigits = cardDigitsOnly(cardInput.value);
-      var amount = readAmount(amountInput);
+    var body = modal.querySelector("#tr-body");
+    var searchInput = modal.querySelector("#tr-search");
+    var curTab = "friends";
 
-      if(cardDigits.length !== 16){ errEl.textContent = "Введіть коректний номер картки (16 цифр)"; cardInput.classList.add("error"); return; }
-      if(!amount || amount <= 0){ errEl.textContent = "Введіть суму переказу"; amountInput.classList.add("error"); return; }
-      if(cardDigits === state.user.card.replace(/\s/g,"")){ errEl.textContent = "Не можна переказати кошти самому собі"; return; }
-
-      submitBtn.disabled = true; cardInput.disabled = true; amountInput.disabled = true;
-      submitLabel.innerHTML = '<span class="spinner"></span>';
-
-      var sender = await getUser(state.email);
-      if(!sender){ showToast("Помилка синхронізації", "error"); closeModal(); return; }
-      if(amount > sender.balance){
-        errEl.textContent = "Недостатньо коштів";
-        submitBtn.disabled=false; cardInput.disabled=false; amountInput.disabled=false; submitLabel.textContent="Переказати"; return;
-      }
-      var receiverEmail = await getCardOwnerEmail(cardDigits);
-      if(!receiverEmail){
-        errEl.textContent = "Картку не знайдено"; cardInput.classList.add("error");
-        submitBtn.disabled=false; cardInput.disabled=false; amountInput.disabled=false; submitLabel.textContent="Переказати"; return;
-      }
-      var receiver = await getUser(receiverEmail);
-      if(!receiver){
-        errEl.textContent = "Картку не знайдено";
-        submitBtn.disabled=false; cardInput.disabled=false; amountInput.disabled=false; submitLabel.textContent="Переказати"; return;
-      }
-
-      sender.balance = Math.round((sender.balance - amount) * 100) / 100;
-      receiver.balance = Math.round((receiver.balance + amount) * 100) / 100;
-      var now = Date.now();
-      var senderCardDigits = sender.card.replace(/\s/g,"");
-      var receiverCardDigits = receiver.card.replace(/\s/g,"");
-
-      var txOut = {id: uid(), kind:"transfer_out", amount:-amount, date: now, senderCard: senderCardDigits, receiverCard: receiverCardDigits, purpose:"Переказ коштів"};
-      var txIn = {id: uid(), kind:"transfer_in", amount: amount, date: now, senderCard: senderCardDigits, receiverCard: receiverCardDigits, purpose:"Переказ коштів"};
-      sender.transactions.push(txOut);
-      receiver.transactions.push(txIn);
-      addMoneyProgress(receiver, amount);
-
-      var ok1 = await saveUser(sender);
-      var ok2 = await saveUser(receiver);
-      if(!ok1 || !ok2){
-        showToast("Не вдалося виконати переказ", "error");
-        submitBtn.disabled=false; cardInput.disabled=false; amountInput.disabled=false; submitLabel.textContent="Переказати"; return;
-      }
-
-      state.user = sender;
-      state.modal = {type:"receipt", tx:txOut};
-      render();
-      showToast("Переказано " + fmt(amount));
+    modal.querySelectorAll("[data-tr-tab]").forEach(function(el){
+      el.addEventListener("click", function(){
+        curTab = el.getAttribute("data-tr-tab");
+        modal.querySelectorAll("[data-tr-tab]").forEach(function(t){ t.classList.toggle("active", t===el); });
+        searchInput.style.display = curTab === "friends" ? "" : "none";
+        renderTabBody();
+      });
     });
+    searchInput.addEventListener("input", function(){ if(curTab === "friends") renderFriendsList(); });
 
-    attachNumpad(amountInput, amountInput);
-    setTimeout(function(){ cardInput.focus(); }, 300);
+    function renderTabBody(){
+      if(curTab === "friends") renderFriendsList();
+      else renderCardForm();
+    }
+
+    function renderFriendsList(){
+      var friends = state.user.friends || [];
+      var q = (searchInput.value || "").trim().toLowerCase();
+      var filtered = q ? friends.filter(function(f){ return f.email.toLowerCase().indexOf(q) !== -1; }) : friends;
+
+      var addRow = '<div class="my-listing" id="add-friend-row" style="cursor:pointer;">' +
+        '<div class="avatar" style="border:none; background:var(--bg-2); display:flex; align-items:center; justify-content:center; font-size:18px;">+</div>' +
+        '<div class="info"><div class="title" style="color:#8a4dff;">Додати друга</div></div>' +
+      '</div>';
+
+      var rows = filtered.map(function(f){
+        var initial = f.email[0].toUpperCase();
+        return '<div class="my-listing tr-friend-row" data-friend-email="' + escapeHtml(f.email) + '" style="cursor:pointer;">' +
+          '<div class="avatar" style="border:none; background:' + avatarColorFor(f.email) + '; color:#fff; font-weight:800;">' + initial + '</div>' +
+          '<div class="info"><div class="title">' + escapeHtml(f.email.split("@")[0]) + '</div>' +
+          '<div class="price">' + escapeHtml(f.email) + '</div></div>' +
+        '</div>';
+      }).join("");
+
+      body.innerHTML = '<div style="display:flex; flex-direction:column; gap:6px;">' + addRow + rows + '</div>' +
+        (filtered.length === 0 && friends.length > 0 ? '<div class="empty-state">Нічого не знайдено</div>' : '') +
+        (friends.length === 0 ? '<div class="empty-state">Поки немає друзів — додайте першого!</div>' : '');
+
+      body.querySelector("#add-friend-row").addEventListener("click", renderAddFriendForm);
+      body.querySelectorAll(".tr-friend-row").forEach(function(row){
+        row.addEventListener("click", function(){
+          renderAmountForm({email: row.getAttribute("data-friend-email")});
+        });
+      });
+    }
+
+    function renderAddFriendForm(){
+      body.innerHTML =
+        '<div class="info-card-sub" style="margin-bottom:12px;">Введіть email гравця, щоб додати його в друзі — далі можна буде переказувати йому гроші без вводу номера картки.</div>' +
+        '<div class="field"><input type="text" id="new-friend-email" placeholder="friend@example.com" autocapitalize="off" autocorrect="off" spellcheck="false"></div>' +
+        '<div class="err-msg" id="add-friend-error"></div>' +
+        '<button class="btn btn-primary" id="add-friend-submit"><span id="add-friend-label">Додати</span></button>' +
+        '<button class="btn btn-ghost" id="add-friend-cancel" style="margin-top:8px;">Назад</button>';
+
+      var emailInput = body.querySelector("#new-friend-email");
+      var errEl = body.querySelector("#add-friend-error");
+      body.querySelector("#add-friend-cancel").addEventListener("click", renderFriendsList);
+      body.querySelector("#add-friend-submit").addEventListener("click", async function(){
+        var btn = body.querySelector("#add-friend-submit");
+        var label = body.querySelector("#add-friend-label");
+        btn.disabled = true; label.innerHTML = '<span class="spinner"></span>';
+        var res = await addFriendByEmail(emailInput.value);
+        if(!res.ok){ errEl.textContent = res.error; btn.disabled=false; label.textContent="Додати"; return; }
+        showToast("Друга додано!");
+        renderFriendsList();
+      });
+      setTimeout(function(){ emailInput.focus(); }, 200);
+    }
+
+    function renderAmountForm(target){
+      // target: {email} for a friend, or {cardDigits} for manual card entry
+      var label = target.email ? target.email.split("@")[0] : maskCard(target.cardDigits);
+      body.innerHTML =
+        '<div class="info-card" style="text-align:center;"><div class="info-card-sub">Отримувач</div><div class="info-card-title">' + escapeHtml(label) + '</div></div>' +
+        '<div class="field" style="margin-top:14px;"><div class="field-label">Сума</div>' +
+        '<input type="text" id="tr-amount" placeholder="0" inputmode="none"></div>' +
+        '<div class="err-msg" id="tr-error"></div>' +
+        '<button class="btn btn-primary" id="tr-submit" style="margin-top:8px;"><span id="tr-submit-label">Переказати</span></button>' +
+        '<button class="btn btn-ghost" id="tr-back" style="margin-top:8px;">Назад</button>';
+
+      var amountInput = body.querySelector("#tr-amount");
+      var errEl = body.querySelector("#tr-error");
+      var submitBtn = body.querySelector("#tr-submit");
+      var submitLabel = body.querySelector("#tr-submit-label");
+
+      body.querySelector("#tr-back").addEventListener("click", renderTabBody);
+      amountInput.addEventListener("input", function(){ errEl.textContent = ""; });
+
+      submitBtn.addEventListener("click", async function(){
+        var amount = readAmount(amountInput);
+        if(!amount || amount <= 0){ errEl.textContent = "Введіть суму переказу"; return; }
+
+        submitBtn.disabled = true; amountInput.disabled = true;
+        submitLabel.innerHTML = '<span class="spinner"></span>';
+
+        var receiverEmail = target.email;
+        if(!receiverEmail){
+          receiverEmail = await getCardOwnerEmail(target.cardDigits);
+          if(!receiverEmail){
+            errEl.textContent = "Картку не знайдено";
+            submitBtn.disabled=false; amountInput.disabled=false; submitLabel.textContent="Переказати"; return;
+          }
+        }
+
+        var res = await performTransfer(receiverEmail, amount);
+        if(!res.ok){
+          errEl.textContent = res.error;
+          submitBtn.disabled=false; amountInput.disabled=false; submitLabel.textContent="Переказати"; return;
+        }
+
+        state.modal = {type:"receipt", tx: res.txOut};
+        render();
+        showToast("Переказано " + fmt(amount));
+      });
+
+      attachNumpad(amountInput, amountInput);
+    }
+
+    function renderCardForm(){
+      body.innerHTML =
+        '<div class="field"><div class="field-label">Номер картки отримувача</div>' +
+        '<input type="text" id="tr-card" class="num" placeholder="0000 0000 0000 0000" inputmode="numeric" maxlength="19"></div>' +
+        '<div class="err-msg" id="tr-card-error"></div>' +
+        '<button class="btn btn-primary" id="tr-card-next">Далі</button>';
+
+      var cardInput = body.querySelector("#tr-card");
+      var errEl = body.querySelector("#tr-card-error");
+      cardInput.addEventListener("input", function(){
+        var digits = cardDigitsOnly(cardInput.value).slice(0,16);
+        cardInput.value = digits.replace(/(.{4})/g,"$1 ").trim();
+        errEl.textContent = "";
+      });
+      body.querySelector("#tr-card-next").addEventListener("click", function(){
+        var digits = cardDigitsOnly(cardInput.value);
+        if(digits.length !== 16){ errEl.textContent = "Введіть коректний номер картки (16 цифр)"; return; }
+        renderAmountForm({cardDigits: digits});
+      });
+      setTimeout(function(){ cardInput.focus(); }, 200);
+    }
+
+    renderFriendsList();
     return overlay;
   }
 
@@ -2987,7 +3215,7 @@
       var user = await getUser(state.email);
       if(!user){ showToast("Помилка синхронізації", "error"); closeModal(); return; }
       user.balance = Math.round((user.balance + amount) * 100) / 100;
-      var tx = {id: uid(), kind:"topup", amount: amount, date: Date.now(), receiverCard: user.card.replace(/\s/g,""), purpose:"Демо-поповнення"};
+      var tx = {id: uid(), kind:"topup", amount: amount, date: Date.now(), receiverCard: activeCard(user).digits, purpose:"Демо-поповнення"};
       user.transactions.push(tx);
 
       var ok = await saveUser(user);
