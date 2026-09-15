@@ -1123,7 +1123,8 @@
     timerHandle: null,
     payoutCheckHandle: null,
     displayCurrency: getDisplayCurrencyCode(), // UAH | USD | CHF | RUB — display only
-    announcement: null // {text, updatedAt, updatedBy} — global message, admin-editable
+    announcement: null, // {text, updatedAt, updatedBy} — global message, admin-editable
+    userUnsub: null // Firestore real-time listener unsubscribe function
   };
 
   var app = document.getElementById("app");
@@ -1287,11 +1288,39 @@
     }, 1000);
     if(state.payoutCheckHandle) clearInterval(state.payoutCheckHandle);
     checkLoanAndVip();
+    // Real-time Firestore listener already pushes balance/loan/vip changes
+    // instantly, so this poll is just a slow safety net (auto-deduct/payout
+    // logic still needs to run even if nothing pushed an update recently).
     state.payoutCheckHandle = setInterval(checkLoanAndVip, 15000);
 
     refreshAnnouncement();
     if(state.announcementHandle) clearInterval(state.announcementHandle);
     state.announcementHandle = setInterval(refreshAnnouncement, 30000);
+
+    startUserListener();
+  }
+
+  // ---------- real-time updates: no page refresh needed ----------
+  // Firestore's onSnapshot fires immediately whenever the user's document
+  // changes — from this device OR any other (someone sends you money, admin
+  // tops you up, etc.) — so the balance/history update live on screen.
+  function startUserListener(){
+    if(state.userUnsub){ state.userUnsub(); state.userUnsub = null; }
+    if(!firebaseReady || !state.email) return;
+    try{
+      state.userUnsub = db.collection("users").doc(state.email)
+        .onSnapshot(function(snap){
+          if(!snap.exists) return;
+          var fresh = normalizeUser(snap.data());
+          state.user = fresh;
+          if(state.screen === "home" && !state.modal) render();
+        }, function(err){
+          // silently ignore — the 15s poll below still keeps data fresh
+        });
+    }catch(e){ /* firebase unavailable, polling still covers us */ }
+  }
+  function stopUserListener(){
+    if(state.userUnsub){ state.userUnsub(); state.userUnsub = null; }
   }
 
   async function refreshAnnouncement(){
@@ -1800,6 +1829,8 @@
   function handleLogout(){
     if(state.timerHandle) clearInterval(state.timerHandle);
     if(state.payoutCheckHandle) clearInterval(state.payoutCheckHandle);
+    if(state.announcementHandle) clearInterval(state.announcementHandle);
+    stopUserListener();
     setSession(null);
     state.email = null; state.user = null; state.screen = "email"; state.modal = null; state.tab = "home";
     render();
