@@ -113,10 +113,6 @@
     display:flex; flex-direction:column; justify-content:space-between;}
   .card-visual::after{content:none;}
   .card-visual.marshal-card{
-    background:
-      radial-gradient(140% 110% at 100% 0%, rgba(57,255,120,.28), transparent 55%),
-      radial-gradient(140% 110% at 0% 100%, rgba(20,220,90,.28), transparent 55%),
-      #041006;
     border:1px solid rgba(57,255,120,.55);
     box-shadow: 0 0 24px rgba(57,255,120,.4), 0 0 60px rgba(30,240,100,.2), var(--shadow-card);
     animation: neonPulse 2.4s ease-in-out infinite;
@@ -124,9 +120,6 @@
   @keyframes neonPulse{
     0%,100%{ box-shadow: 0 0 20px rgba(57,255,120,.35), 0 0 50px rgba(30,240,100,.18), var(--shadow-card); }
     50%{ box-shadow: 0 0 36px rgba(57,255,120,.6), 0 0 84px rgba(30,240,100,.32), var(--shadow-card); }
-  }
-  .card-visual.marshal-card .card-brand-mark{
-    color:#39ff78; text-shadow:0 0 10px rgba(57,255,120,.8); letter-spacing:1px;
   }
   .card-visual.marshal-card::after{
     content:""; position:absolute; inset:0; transform:translateX(-120%); animation: sheen 2.6s ease-in-out .4s 1;
@@ -142,15 +135,8 @@
     100%{ box-shadow: 0 0 20px rgba(57,255,120,.35), 0 0 50px rgba(30,240,100,.18), var(--shadow-card); }
   }
   .card-visual.admin-card{
-    background:
-      radial-gradient(140% 110% at 100% 0%, rgba(255,215,120,.25), transparent 55%),
-      radial-gradient(140% 110% at 0% 100%, rgba(120,170,255,.22), transparent 55%),
-      #0a0805;
     border:1px solid rgba(243,223,168,.5);
     box-shadow: 0 0 20px rgba(243,223,168,.25), var(--shadow-card);
-  }
-  .card-visual.admin-card .card-brand-mark{
-    color:#f3dfa8; text-shadow:0 0 8px rgba(243,223,168,.6); letter-spacing:1px;
   }
   .card-visual.admin-card .chip{ background:linear-gradient(135deg,#dce7ff,#9fb8ff); }
   .card-visual.admin-card::after{
@@ -286,11 +272,20 @@
   @keyframes toastOut{to{opacity:0; transform:translateY(-10px);}}
 
   /* tab bar */
-  .tabbar{position:fixed; bottom:0; left:50%; transform:translateX(-50%); width:100%; max-width:440px; background:rgba(13,13,15,.92); backdrop-filter:blur(14px); border-top:1px solid var(--line); display:flex; z-index:40; padding:8px 6px calc(8px + env(safe-area-inset-bottom));}
-  .tab-btn{flex:1; background:none; border:none; display:flex; flex-direction:column; align-items:center; gap:4px; padding:6px 2px; cursor:pointer; color:var(--text-2); transition:color .2s ease;}
-  .tab-btn.active{color:var(--text-0);}
+  .tabbar{
+    position:fixed; bottom:calc(16px + env(safe-area-inset-bottom)); left:50%; transform:translateX(-50%);
+    width:auto; max-width:none; background:#000; border:1px solid rgba(255,255,255,.1);
+    border-radius:999px; display:flex; z-index:40; padding:8px; gap:4px;
+    box-shadow:0 18px 40px -12px rgba(0,0,0,.6);
+  }
+  .tab-btn{
+    flex:0 0 auto; background:none; border:none; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; gap:0; width:50px; height:50px;
+    border-radius:999px; cursor:pointer; color:rgba(255,255,255,.5); transition:all .2s ease;
+  }
+  .tab-btn.active{color:#000; background:#fff;}
   .tab-btn svg{width:20px;height:20px;}
-  .tab-btn span{font-size:10.5px; font-weight:700;}
+  .tab-btn span{display:none;}
 
   /* market */
   .market-tabs{display:flex; gap:8px; margin:16px 0 4px;}
@@ -313,6 +308,69 @@
   .del-btn{background:none; border:none; color:var(--danger); font-size:18px; cursor:pointer; padding:4px 8px;}
 
   /* ---------- on-screen numpad (tap digits instead of the OS keyboard) ---------- */
+  /* ---------- card tier picker (swipeable vertical cards) ---------- */
+  /* ---------- home layout: dark hero on top, white sheet with transactions ---------- */
+  .home-hero{
+    margin:0 -20px; padding:8px 20px 26px;
+    background:#000; border-radius:0 0 30px 30px;
+  }
+  .home-sheet{
+    margin:0 -20px; padding:22px 20px 110px; min-height:60vh;
+    background:#fff; color:#111; border-radius:30px 30px 0 0;
+  }
+  .home-sheet .section-label{color:#111; opacity:.9;}
+  .home-sheet .tx-item{border-bottom:1px solid #ececec;}
+  .home-sheet .tx-item:hover{background:#f7f7f7;}
+  .home-sheet .tx-title{color:#111;}
+  .home-sheet .tx-date{color:#8a8a8e;}
+  .home-sheet .tx-amount.neg{color:#111;}
+  .home-sheet .tx-amount.pos{color:#12b76a;}
+  .home-sheet .tx-icon{background:#f2f2f4;}
+  .home-sheet .receipt-chip{background:#f2f2f4; border-color:#e4e4e8; color:#9a9aa0;}
+  .home-sheet .empty-tx{color:#8a8a8e;}
+  .home-sheet .info-card{background:#f7f7f9; border-color:#ececf0;}
+  .home-sheet .info-card-title{color:#111;}
+  .home-sheet .info-card-sub{color:#6b6b72;}
+  .home-sheet .rate-chart{background:#f7f7f9; border-color:#ececf0;}
+  .home-sheet .progress-track{background:#e8e8ec;}
+  .home-sheet .btn-ghost{background:#fff; color:#111; border-color:#e0e0e6;}
+  .see-all{font-size:12.5px; color:#9a9aa0; font-weight:600; text-transform:none; letter-spacing:0;}
+
+  .tier-screen{display:flex; flex-direction:column; height:100%;}
+  .tier-head{text-align:center; padding:6px 0 4px;}
+  .tier-head h2{font-size:26px; font-weight:800; margin:0 0 4px; letter-spacing:-.4px;}
+  .tier-price{font-size:14px; color:var(--text-2);}
+  .tier-price b{color:var(--text-0); font-weight:800;}
+  .tier-track{
+    display:flex; gap:18px; overflow-x:auto; scroll-snap-type:x mandatory;
+    padding:22px 0 14px; margin:0 -20px; padding-left:calc(50% - 105px); padding-right:calc(50% - 105px);
+    scrollbar-width:none;
+  }
+  .tier-track::-webkit-scrollbar{display:none;}
+  .tier-card{
+    flex:0 0 210px; height:330px; border-radius:20px; scroll-snap-align:center;
+    position:relative; overflow:hidden; padding:18px;
+    display:flex; flex-direction:column; justify-content:space-between;
+    box-shadow:0 26px 60px -24px rgba(0,0,0,.85), 0 0 0 1px rgba(255,255,255,.07);
+    transition:transform .35s cubic-bezier(.19,1,.22,1), opacity .35s ease;
+    transform:scale(.88); opacity:.55;
+  }
+  .tier-card.is-active{transform:scale(1); opacity:1;}
+  .tier-card .tier-holder{
+    writing-mode:vertical-rl; font-size:12px; font-weight:700; letter-spacing:.06em;
+    opacity:.8; align-self:flex-start;
+  }
+  .tier-card .tier-brand{font-size:26px; font-weight:800; font-style:italic; letter-spacing:-.5px; line-height:1;}
+  .tier-card .tier-brand small{display:block; font-size:10px; font-style:normal; font-weight:700; letter-spacing:.18em; opacity:.6; margin-top:3px;}
+  .tier-card .tier-wave{position:absolute; right:16px; bottom:18px; font-size:20px; opacity:.75; transform:rotate(90deg);}
+  .tier-dots{display:flex; gap:6px; justify-content:center; padding:4px 0 16px;}
+  .tier-dot{width:6px; height:6px; border-radius:99px; background:var(--line); transition:all .25s ease;}
+  .tier-dot.on{width:18px; background:var(--text-0);}
+  .tier-owned-badge{
+    display:inline-block; margin-top:6px; font-size:11px; font-weight:800;
+    color:var(--success); letter-spacing:.04em;
+  }
+
   .numpad{display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-top:14px;}
   .numpad-key{
     background:var(--bg-2); border:1px solid var(--line); color:var(--text-0);
@@ -472,6 +530,24 @@
   var VIP_DAILY_PAYOUT = 10000;
   var VIP_PERIOD_MS = 24 * 60 * 60 * 1000;
   var MEGA_VIP_COST = 5000000;
+
+  // ---------- card tiers: cosmetic card designs the player can buy ----------
+  // Purely visual; buying one only changes how the card looks on the home
+  // screen. "standard" is free and is what every new account starts with.
+  var CARD_TIERS = [
+    {id:"standard", name:"Стандарт", price:0,       sub:"Базова картка",
+     face:"linear-gradient(145deg,#2a2a2e 0%,#1a1a1d 55%,#101012 100%)", ink:"#f5f5f7", inkSoft:"rgba(245,245,247,.55)"},
+    {id:"silver",   name:"Silver",   price:250000,  sub:"Сріблястий метал",
+     face:"linear-gradient(145deg,#e9e9ea 0%,#c3c4c7 45%,#9fa0a4 100%)", ink:"#17171a", inkSoft:"rgba(23,23,26,.55)"},
+    {id:"gold",     name:"Gold",     price:1500000, sub:"Золоте покриття",
+     face:"linear-gradient(145deg,#f0dfae 0%,#d9bd77 45%,#b9974e 100%)", ink:"#241a05", inkSoft:"rgba(36,26,5,.55)"},
+    {id:"platinum", name:"Platinum", price:6000000, sub:"Платиновий рівень",
+     face:"linear-gradient(145deg,#f4f4f2 0%,#d8d8d4 40%,#b2b2ae 100%)", ink:"#1b1b19", inkSoft:"rgba(27,27,25,.55)"}
+  ];
+  function cardTierById(id){
+    for(var i=0;i<CARD_TIERS.length;i++){ if(CARD_TIERS[i].id === id) return CARD_TIERS[i]; }
+    return CARD_TIERS[0];
+  }
   var MEGA_VIP_LEVEL_BONUS = 20;
   var MEGA_VIP_DAILY_PAYOUT = 100000;
   var SAVINGS_DAILY_RATE = 0.20; // +20% per day, compounded
@@ -631,6 +707,8 @@
     if(user.megaLevelBonus === undefined) user.megaLevelBonus = 0;
     if(user.marshalLastPayout === undefined) user.marshalLastPayout = null;
     if(user.lastDailyBonusAt === undefined) user.lastDailyBonusAt = null;
+    if(user.cardTier === undefined) user.cardTier = "standard";
+    if(user.ownedTiers === undefined) user.ownedTiers = ["standard"];
     if(user.savings === undefined) user.savings = {balance: 0, lastGrowthAt: null};
     if(!user.savings) user.savings = {balance: 0, lastGrowthAt: null};
     if(user.savings.balance === undefined) user.savings.balance = 0;
@@ -1083,6 +1161,7 @@
       else if(state.modal.type === "resetConfirm") modalRoot.appendChild(renderResetConfirmModal());
       else if(state.modal.type === "company") modalRoot.appendChild(renderCompanyModal());
       else if(state.modal.type === "daily") modalRoot.appendChild(renderDailyModal());
+      else if(state.modal.type === "cardTier") modalRoot.appendChild(renderCardTierModal());
     }
   }
   function closeModal(){ state.modal = null; render(); }
@@ -1397,7 +1476,9 @@
     var isMarshal = (state.email === MARSHAL_EMAIL);
     var isAdminAcc = (state.email === ADMIN_EMAIL);
     var marshalFlashClass = (state.marshalFlash ? ' marshal-flash' : '');
+    var tierCfg = cardTierById(user.cardTier || "standard");
     rest.innerHTML =
+      '<div class="home-hero">' +
       '<div class="top-grid">' +
       '<div class="balance-block"><div style="width:100%;"><div class="balance-label">Баланс</div>' +
         '<div class="balance-amount"><span id="balance-num">0,00</span><span class="cur">' + currentCurSymbol() + '</span></div>' +
@@ -1405,11 +1486,12 @@
         '<div class="progress-track"><div class="progress-fill" style="width:' + lvlPct + '%"></div></div></div>' +
       '</div></div>' +
 
-      '<div class="card-visual' + (isMarshal ? ' marshal-card' + marshalFlashClass : '') + (isAdminAcc ? ' admin-card' : '') + '">' +
-        '<div class="card-top-row"><div class="chip"></div><div class="card-brand-mark" style="display:flex; align-items:center; gap:6px;"><span style="width:20px;height:20px;border-radius:6px;overflow:hidden;display:inline-flex;">' + LOGO_IMG_TAG + '</span>' + (isMarshal ? "MARSHAL" : APP_NAME) + '</div></div>' +
-        '<div><div class="card-number-row"><div class="card-number num">' + escapeHtml(user.card) + '</div>' +
+      '<div class="card-visual' + (isMarshal ? ' marshal-card' + marshalFlashClass : '') + (isAdminAcc ? ' admin-card' : '') + '" id="home-card"' +
+        ' style="background:' + tierCfg.face + '; cursor:pointer;">' +
+        '<div class="card-top-row"><div class="chip"></div><div class="card-brand-mark" style="display:flex; align-items:center; gap:6px; color:' + tierCfg.ink + ';"><span style="width:20px;height:20px;border-radius:6px;overflow:hidden;display:inline-flex;">' + LOGO_IMG_TAG + '</span>' + (isMarshal ? "MARSHAL" : APP_NAME) + '</div></div>' +
+        '<div><div class="card-number-row"><div class="card-number num" style="color:' + tierCfg.ink + ';">' + escapeHtml(user.card) + '</div>' +
         '<button class="copy-btn" id="copy-btn">' + ICONS.copy + '<span id="copy-label">Копія</span></button></div>' +
-        '<div class="card-bottom-row"><div class="card-holder">' + escapeHtml(user.email.split("@")[0]) + (isMarshal ? ' · MARSHAL TIER' : (isAdminAcc ? ' · ADMIN' : ' · демо-картка')) + '</div></div></div>' +
+        '<div class="card-bottom-row"><div class="card-holder" style="color:' + tierCfg.inkSoft + ';">' + escapeHtml(user.email.split("@")[0]) + (isMarshal ? ' · MARSHAL' : (isAdminAcc ? ' · ADMIN' : '')) + ' · ' + tierCfg.name.toUpperCase() + '</div></div></div>' +
       '</div>' +
       '</div>' +
 
@@ -1421,16 +1503,17 @@
         '<button class="action-btn" id="company-open-btn"><div class="icon-wrap">🏢</div><span>Компанія</span></button>' +
         '<button class="action-btn" id="daily-open-btn"><div class="icon-wrap' + (canClaimDaily(user) ? ' daily-ready' : '') + '">🎁</div><span>' + (canClaimDaily(user) ? "Бонус!" : "Бонус") + '</span></button>' +
       '</div>' +
+      '</div>' +
 
+      '<div class="home-sheet">' +
       (user.loan ? loanCardHtml(user) : '') +
       ((user.vip || user.mega) ? vipCardHtml(user) : '') +
       (user.savings && user.savings.balance > 0 ? savingsCardHtml(user) : '') +
       rateChartHtml(user) +
 
-      '<div class="sync-note">' + ICONS.globe + '<span>Ігровий email, картка й баланс синхронізовані між пристроями. Це демо-гра — гроші тут не справжні.</span></div>' +
-
-      '<div class="section-label">Історія операцій</div>' +
-      '<div class="tx-list" id="tx-list"></div>';
+      '<div class="section-label" style="display:flex; align-items:center; justify-content:space-between;"><span>Останні операції</span><span class="see-all">Демо-гра · не справжні гроші</span></div>' +
+      '<div class="tx-list" id="tx-list"></div>' +
+      '</div>';
     wrap.appendChild(rest);
 
     setTimeout(function(){ animateBalance(wrap.querySelector("#balance-num"), user.balance); }, 80);
@@ -1457,9 +1540,12 @@
     var savWd = wrap.querySelector("#savings-withdraw-btn");
     if(savWd) savWd.addEventListener("click", function(){ state.modal = {type:"savings", mode:"withdraw"}; render(); });
 
-    wrap.querySelector("#copy-btn").addEventListener("click", function(){
+    wrap.querySelector("#copy-btn").addEventListener("click", function(e){
+      e.stopPropagation(); // don't open the tier picker when copying
       copyCardNumber(user.card, wrap.querySelector("#copy-btn"), wrap.querySelector("#copy-label"));
     });
+    var homeCard = wrap.querySelector("#home-card");
+    if(homeCard) homeCard.addEventListener("click", function(){ state.modal = {type:"cardTier"}; render(); });
     return wrap;
   }
 
@@ -1564,6 +1650,7 @@
     else if(tx.kind === "company_invest"){ iconHtml = ICONS.txOut; title = tx.purpose || "Вклад у компанію"; }
     else if(tx.kind === "company_payout"){ iconHtml = ICONS.txIn; title = tx.purpose || "Прибуток від компанії"; }
     else if(tx.kind === "daily_bonus"){ iconHtml = ICONS.plus; iconClass = "topup"; title = tx.purpose || "Щоденний бонус"; }
+    else if(tx.kind === "card_buy"){ iconHtml = ICONS.copy; title = tx.purpose || "Придбання картки"; }
     else if(tx.kind === "shift_income"){ iconHtml = "👔"; title = tx.purpose || "Зміна в банку"; }
     else if(tx.kind === "purchase"){ iconHtml = ICONS.market; title = "Покупка: " + (tx.purpose || "товар"); }
     else if(tx.kind === "sale"){ iconHtml = ICONS.tag; title = "Продаж: " + (tx.purpose || "товар"); }
@@ -1656,6 +1743,15 @@
   // ---------- on-screen numpad: tap digits instead of the OS keyboard ----------
   // Turns a money-amount <input> into a tap-only field with a numeric grid
   // rendered right after it (matching the "amount entry" UX pattern).
+  // Shared helper so chips, the numpad and any other code all produce the
+  // same "12,340" display format that readAmount() knows how to parse back.
+  function groupThousands(raw){
+    if(raw === "" || raw === null || raw === undefined) return "";
+    var parts = String(raw).split(".");
+    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    return parts.join(".");
+  }
+
   function attachNumpad(afterEl, inputEl, opts){
     opts = opts || {};
     var maxLen = opts.maxLen || 15;
@@ -1664,12 +1760,7 @@
     inputEl.classList.add("numpad-input");
 
     function rawDigits(){ return (inputEl.value || "").replace(/,/g, ""); }
-    function formatGrouped(raw){
-      if(raw === "") return "";
-      var parts = raw.split(".");
-      parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-      return parts.join(".");
-    }
+    function formatGrouped(raw){ return groupThousands(raw); }
 
     var pad = document.createElement("div");
     pad.className = "numpad";
@@ -1782,7 +1873,7 @@
       '<div class="modal-header"><h2>Взяти кредит</h2><button class="close-x" id="modal-close">&times;</button></div>' +
       '<div class="info-card-sub" style="margin-bottom:14px;">Доступно до ' + fmt(maxLoan) + ' (рівень ' + user.level + '). Погашення протягом 3 днів.</div>' +
       '<div class="field"><div class="field-label">Сума кредиту</div>' +
-      '<input type="number" id="loan-amount" placeholder="0" inputmode="decimal" min="1" max="' + maxLoan + '" step="1">' +
+      '<input type="text" id="loan-amount" placeholder="0" inputmode="none">' +
       '<div class="chip-row" id="loan-chips"></div></div>' +
       '<div class="err-msg" id="loan-error"></div>' +
       '<button class="btn btn-primary" id="loan-submit"><span id="loan-submit-label">Отримати кредит</span></button>';
@@ -1795,7 +1886,7 @@
       var chip = document.createElement("div");
       chip.className = "amount-chip";
       chip.textContent = fmt(v);
-      chip.addEventListener("click", function(){ input.value = v; });
+      chip.addEventListener("click", function(){ input.value = groupThousands(String(v)); });
       chipsRow.appendChild(chip);
     });
 
@@ -2034,7 +2125,7 @@
       '<div class="modal-handle"></div>' +
       '<div class="modal-header"><h2>🏦 ' + (mode==="deposit" ? "Поповнити рахунок" : "Зняти з рахунку") + '</h2><button class="close-x" id="modal-close">&times;</button></div>' +
       '<div class="info-card-sub" style="margin-bottom:16px;">' + (mode==="deposit" ? "Кошти на зберігальному рахунку зростають на +20% щодня." : "Переказати кошти назад на основний баланс.") + '</div>' +
-      '<div class="field"><div class="field-label">Сума</div><input type="number" id="sav-amount" placeholder="0" inputmode="decimal" min="0" step="0.01"></div>' +
+      '<div class="field"><div class="field-label">Сума</div><input type="text" id="sav-amount" placeholder="0" inputmode="none"></div>' +
       '<div class="err-msg" id="sav-error"></div>' +
       '<button class="btn btn-primary" id="sav-submit"><span id="sav-submit-label">' + (mode==="deposit" ? "Покласти на рахунок" : "Зняти на баланс") + '</span></button>';
     overlay.appendChild(modal);
@@ -2269,7 +2360,7 @@
       '<div class="modal-handle"></div>' +
       '<div class="modal-header"><h2>Виставити товар</h2><button class="close-x" id="modal-close">&times;</button></div>' +
       '<div class="field"><div class="field-label">Назва товару</div><input type="text" id="sell-title" placeholder="Напр. Велосипед" maxlength="60"></div>' +
-      '<div class="field"><div class="field-label">Ціна (' + CUR + ')</div><input type="number" id="sell-price" placeholder="0" inputmode="decimal" min="1" step="1"></div>' +
+      '<div class="field"><div class="field-label">Ціна (' + CUR + ')</div><input type="text" id="sell-price" placeholder="0" inputmode="none"></div>' +
       '<div class="err-msg" id="sell-error"></div>' +
       '<button class="btn btn-primary" id="sell-submit"><span id="sell-submit-label">Виставити на продаж</span></button>';
     overlay.appendChild(modal);
@@ -2467,7 +2558,7 @@
         '<div class="info-card-sub">Капітал компанії: <b style="color:var(--text-0);">' + fmt(myCompany.capital||0) + '</b></div>' +
       '</div>' +
       '<div class="field"><div class="field-label">Сума вкладу</div>' +
-      '<input type="number" id="company-amount" placeholder="0" inputmode="decimal" min="1" step="1">' +
+      '<input type="text" id="company-amount" placeholder="0" inputmode="none">' +
       '<div class="chip-row" id="company-chips"></div></div>' +
       '<div class="info-card-sub" id="company-preview" style="margin-bottom:10px;"></div>' +
       '<div class="err-msg" id="company-error"></div>' +
@@ -2484,7 +2575,7 @@
       var chip = document.createElement("div");
       chip.className = "amount-chip";
       chip.textContent = fmt(v);
-      chip.addEventListener("click", function(){ amountInput.value = v; updatePreview(); });
+      chip.addEventListener("click", function(){ amountInput.value = groupThousands(String(v)); updatePreview(); });
       chipsRow.appendChild(chip);
     });
     attachNumpad(amountInput, amountInput);
@@ -2605,6 +2696,140 @@
     return overlay;
   }
 
+  // ---------- card tier picker modal ----------
+  function renderCardTierModal(){
+    var overlay = document.createElement("div");
+    overlay.className = "overlay";
+    var modal = document.createElement("div");
+    modal.className = "modal";
+
+    var user = state.user;
+    var owned = user.ownedTiers || ["standard"];
+    var startIdx = Math.max(0, CARD_TIERS.map(function(t){return t.id;}).indexOf(user.cardTier || "standard"));
+    var current = startIdx;
+
+    var cardsHtml = CARD_TIERS.map(function(t, i){
+      return '<div class="tier-card' + (i===startIdx ? ' is-active' : '') + '" data-idx="' + i + '" style="background:' + t.face + '; color:' + t.ink + ';">' +
+        '<div class="tier-holder">' + escapeHtml(user.email.split("@")[0]) + '</div>' +
+        '<div><div class="tier-brand">ЮНР<small>' + t.name.toUpperCase() + '</small></div></div>' +
+        '<div class="tier-wave">((( </div>' +
+      '</div>';
+    }).join("");
+
+    var dotsHtml = CARD_TIERS.map(function(t,i){
+      return '<div class="tier-dot' + (i===startIdx ? ' on' : '') + '" data-dot="' + i + '"></div>';
+    }).join("");
+
+    modal.innerHTML =
+      '<div class="modal-handle"></div>' +
+      '<div class="modal-header" style="margin-bottom:6px;"><button class="close-x" id="modal-close" style="margin-left:auto;">&times;</button></div>' +
+      '<div class="tier-screen">' +
+        '<div class="tier-head">' +
+          '<h2 id="tier-name"></h2>' +
+          '<div class="tier-price" id="tier-price"></div>' +
+          '<div id="tier-owned"></div>' +
+        '</div>' +
+        '<div class="tier-track" id="tier-track">' + cardsHtml + '</div>' +
+        '<div class="tier-dots" id="tier-dots">' + dotsHtml + '</div>' +
+        '<button class="btn btn-primary" id="tier-action" style="background:#000; color:#fff;"><span id="tier-action-label">Обрати</span></button>' +
+      '</div>';
+    overlay.appendChild(modal);
+
+    overlay.addEventListener("click", function(e){ if(e.target === overlay) closeModal(); });
+    modal.querySelector("#modal-close").addEventListener("click", closeModal);
+
+    var track = modal.querySelector("#tier-track");
+    var nameEl = modal.querySelector("#tier-name");
+    var priceEl = modal.querySelector("#tier-price");
+    var ownedEl = modal.querySelector("#tier-owned");
+    var actionBtn = modal.querySelector("#tier-action");
+    var actionLabel = modal.querySelector("#tier-action-label");
+
+    function syncUI(){
+      var t = CARD_TIERS[current];
+      var isOwned = owned.indexOf(t.id) !== -1;
+      var isActive = (user.cardTier || "standard") === t.id;
+      nameEl.textContent = t.name;
+      priceEl.innerHTML = t.price === 0 ? t.sub : '<b>' + fmt(t.price) + '</b> / одноразово';
+      ownedEl.innerHTML = isOwned ? '<span class="tier-owned-badge">✓ У вашій колекції</span>' : '';
+      actionLabel.textContent = isActive ? "Вже активна" : (isOwned ? "Зробити активною" : "Придбати " + t.name);
+      actionBtn.disabled = isActive;
+      actionBtn.style.opacity = isActive ? ".5" : "1";
+
+      modal.querySelectorAll(".tier-card").forEach(function(el, i){
+        el.classList.toggle("is-active", i === current);
+      });
+      modal.querySelectorAll(".tier-dot").forEach(function(el, i){
+        el.classList.toggle("on", i === current);
+      });
+    }
+
+    var scrollTimer = null;
+    track.addEventListener("scroll", function(){
+      clearTimeout(scrollTimer);
+      scrollTimer = setTimeout(function(){
+        var cards = modal.querySelectorAll(".tier-card");
+        var trackRect = track.getBoundingClientRect();
+        var centerX = trackRect.left + trackRect.width/2;
+        var best = 0, bestDist = Infinity;
+        cards.forEach(function(el, i){
+          var r = el.getBoundingClientRect();
+          var d = Math.abs((r.left + r.width/2) - centerX);
+          if(d < bestDist){ bestDist = d; best = i; }
+        });
+        if(best !== current){ current = best; syncUI(); }
+      }, 90);
+    });
+
+    modal.querySelectorAll(".tier-dot").forEach(function(dot){
+      dot.addEventListener("click", function(){
+        var idx = parseInt(dot.getAttribute("data-dot"), 10);
+        var card = modal.querySelector('.tier-card[data-idx="' + idx + '"]');
+        if(card) card.scrollIntoView({behavior:"smooth", block:"nearest", inline:"center"});
+      });
+    });
+
+    actionBtn.addEventListener("click", async function(){
+      var t = CARD_TIERS[current];
+      var isOwned = owned.indexOf(t.id) !== -1;
+
+      actionBtn.disabled = true;
+      actionLabel.innerHTML = '<span class="spinner"></span>';
+
+      var fresh = await getUser(state.email);
+      if(!fresh){ showToast("Помилка синхронізації", "error"); closeModal(); return; }
+      fresh.ownedTiers = fresh.ownedTiers || ["standard"];
+
+      if(!isOwned){
+        if(fresh.balance < t.price){
+          showToast("Недостатньо коштів", "error");
+          actionBtn.disabled = false; syncUI(); return;
+        }
+        fresh.balance = Math.round((fresh.balance - t.price) * 100) / 100;
+        fresh.ownedTiers.push(t.id);
+        fresh.transactions.push({id:uid(), kind:"card_buy", amount:-t.price, date: Date.now(), purpose:"Картка " + t.name});
+      }
+      fresh.cardTier = t.id;
+
+      var ok = await saveUser(fresh);
+      if(!ok){ showToast("Не вдалося зберегти", "error"); actionBtn.disabled=false; syncUI(); return; }
+
+      state.user = fresh;
+      owned = fresh.ownedTiers;
+      user = fresh;
+      closeModal();
+      showToast(isOwned ? ("Активовано: " + t.name) : ("Придбано картку " + t.name + "!"), "gold");
+    });
+
+    syncUI();
+    setTimeout(function(){
+      var card = modal.querySelector('.tier-card[data-idx="' + startIdx + '"]');
+      if(card) card.scrollIntoView({behavior:"auto", block:"nearest", inline:"center"});
+    }, 60);
+
+    return overlay;
+  }
+
   // ---------- transfer modal ----------
   function renderTransferModal(){
     var overlay = document.createElement("div");
@@ -2617,7 +2842,7 @@
       '<div class="field"><div class="field-label">Номер картки отримувача</div>' +
       '<input type="text" id="tr-card" class="num" placeholder="0000 0000 0000 0000" inputmode="numeric" maxlength="19"></div>' +
       '<div class="field"><div class="field-label">Сума</div>' +
-      '<input type="number" id="tr-amount" placeholder="0" inputmode="decimal" min="0" step="0.01"></div>' +
+      '<input type="text" id="tr-amount" placeholder="0" inputmode="none"></div>' +
       '<div class="err-msg" id="tr-error"></div>' +
       '<button class="btn btn-primary" id="tr-submit" style="margin-top:8px;"><span id="tr-submit-label">Переказати</span></button>';
     overlay.appendChild(modal);
@@ -2708,7 +2933,7 @@
       '<div class="modal-handle"></div>' +
       '<div class="modal-header"><h2>Поповнення (адмін, демо)</h2><button class="close-x" id="modal-close">&times;</button></div>' +
       '<div class="field"><div class="field-label">Сума поповнення</div>' +
-      '<input type="number" id="tp-amount" placeholder="0" inputmode="decimal" min="0" step="0.01"></div>' +
+      '<input type="text" id="tp-amount" placeholder="0" inputmode="none"></div>' +
       '<div class="err-msg" id="tp-error"></div>' +
       '<button class="btn btn-primary" id="tp-submit" style="margin-top:8px;"><span id="tp-submit-label">Поповнити</span></button>';
     overlay.appendChild(modal);
