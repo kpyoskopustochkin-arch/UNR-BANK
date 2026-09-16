@@ -2810,23 +2810,18 @@
       }).join("");
 
       body.innerHTML =
+        '<div class="info-card-sub" style="margin-bottom:10px;">Торкніться картки, щоб змінити дизайн або зробити її активною.</div>' +
         '<div style="display:flex; flex-direction:column; gap:8px;">' + rows + '</div>' +
         (cards.length < MAX_CARDS_PER_USER
           ? '<button class="btn btn-primary" id="new-card-btn" style="margin-top:16px;">+ Додати картку (' + cards.length + '/' + MAX_CARDS_PER_USER + ')</button>'
           : '<div class="info-card-sub" style="margin-top:16px; text-align:center;">Досягнуто ліміт — максимум ' + MAX_CARDS_PER_USER + ' карток</div>');
 
       body.querySelectorAll(".my-listing").forEach(function(row){
-        row.addEventListener("click", async function(e){
+        row.addEventListener("click", function(e){
           if(e.target.closest(".del-btn")) return;
           var id = row.getAttribute("data-card-id");
-          if(id === state.user.activeCardId) return;
-          var fresh = await getUser(state.email);
-          if(!fresh){ showToast("Помилка синхронізації", "error"); return; }
-          fresh.activeCardId = id;
-          await saveUser(fresh);
-          state.user = fresh;
-          renderList();
-          showToast("Активну картку змінено");
+          var card = (state.user.cards || []).find(function(c){ return c.id === id; });
+          if(card) renderEditStep(card);
         });
       });
       body.querySelectorAll(".del-btn").forEach(function(btn){
@@ -2930,7 +2925,9 @@
         if(fresh.cards.length >= MAX_CARDS_PER_USER){ errEl.textContent = "Досягнуто ліміт карток"; submitBtn.disabled=false; label.textContent="Створити"; return; }
 
         var tier = CARD_TIERS[selectedTierIdx];
-        if(tier.price > 0 && fresh.balance < tier.price){
+        var freshOwned = fresh.ownedTiers || ["standard"];
+        var mustPay = tier.price > 0 && freshOwned.indexOf(tier.id) === -1;
+        if(mustPay && fresh.balance < tier.price){
           errEl.textContent = "Недостатньо коштів для цього дизайну";
           submitBtn.disabled=false; label.textContent="Створити"; return;
         }
@@ -2938,9 +2935,12 @@
         var digits = await generateUniqueCard();
         var newCard = {id: uid(), digits: digits, label: name, tier: tier.id, createdAt: Date.now()};
 
-        if(tier.price > 0){
+        if(mustPay){
           fresh.balance = Math.round((fresh.balance - tier.price) * 100) / 100;
           fresh.transactions.push({id:uid(), kind:"card_buy", amount:-tier.price, date: Date.now(), purpose:"Нова картка «" + name + "» (" + tier.name + ")"});
+          fresh.ownedTiers = freshOwned.concat([tier.id]);
+        } else if(tier.price > 0){
+          fresh.transactions.push({id:uid(), kind:"card_buy", amount:0, date: Date.now(), purpose:"Нова картка «" + name + "» (" + tier.name + ", вже куплено)"});
         }
         fresh.cards.push(newCard);
         fresh.activeCardId = newCard.id;
@@ -2951,6 +2951,122 @@
 
         state.user = fresh;
         showToast("Картку «" + name + "» створено!", "gold");
+        renderList();
+      });
+    }
+
+    // ---------- edit an existing card's design/name, or just switch to it ----------
+    function renderEditStep(card){
+      var selectedTierIdx = Math.max(0, CARD_TIERS.map(function(t){return t.id;}).indexOf(card.tier || "standard"));
+      var isActive = card.id === state.user.activeCardId;
+
+      body.innerHTML =
+        '<div class="field"><div class="field-label">Назва картки</div>' +
+        '<input type="text" id="edit-card-name" placeholder="Назва" maxlength="24" value="' + escapeHtml(card.label || "") + '"></div>' +
+        '<div class="field-label" style="margin-top:6px;">Дизайн</div>' +
+        '<div class="tier-track" id="edit-tier-track" style="margin:6px 0 0;">' +
+          CARD_TIERS.map(function(t, i){
+            return '<div class="tier-card' + (i===selectedTierIdx ? ' is-active' : '') + '" data-idx="' + i + '" style="background:' + t.face + '; color:' + t.ink + '; height:220px; flex-basis:150px;">' +
+              '<div class="tier-holder">' + escapeHtml(state.email.split("@")[0]) + '</div>' +
+              '<div><div class="tier-brand" style="font-size:20px;">ЮНР<small>' + t.name.toUpperCase() + '</small></div></div>' +
+            '</div>';
+          }).join("") +
+        '</div>' +
+        '<div class="tier-dots" id="edit-tier-dots">' +
+          CARD_TIERS.map(function(t,i){ return '<div class="tier-dot' + (i===selectedTierIdx?' on':'') + '" data-dot="' + i + '"></div>'; }).join("") +
+        '</div>' +
+        '<div class="info-card-sub" id="edit-tier-price" style="text-align:center; margin:-6px 0 14px;"></div>' +
+        '<div class="err-msg" id="edit-card-error"></div>' +
+        '<button class="btn btn-primary" id="edit-card-submit"><span id="edit-card-label">' + (isActive ? "Зберегти" : "Зберегти й активувати") + '</span></button>' +
+        '<button class="btn btn-ghost" id="edit-card-cancel" style="margin-top:8px;">Назад</button>';
+
+      var track = body.querySelector("#edit-tier-track");
+      var priceEl = body.querySelector("#edit-tier-price");
+      var errEl = body.querySelector("#edit-card-error");
+      var owned = state.user.ownedTiers || ["standard"];
+
+      function syncTier(){
+        var t = CARD_TIERS[selectedTierIdx];
+        var isCurrentTier = t.id === (card.tier || "standard");
+        var isOwned = owned.indexOf(t.id) !== -1;
+        priceEl.innerHTML = (t.price === 0 || isCurrentTier || isOwned)
+          ? (t.price === 0 ? t.sub : '<span style="color:var(--success); font-weight:800;">✓ Дизайн уже куплено — безкоштовно</span>')
+          : 'Вартість переходу: <b style="color:var(--text-0);">' + fmt(t.price) + '</b>';
+        body.querySelectorAll(".tier-card").forEach(function(el,i){ el.classList.toggle("is-active", i===selectedTierIdx); });
+        body.querySelectorAll(".tier-dot").forEach(function(el,i){ el.classList.toggle("on", i===selectedTierIdx); });
+      }
+      syncTier();
+
+      var scrollTimer = null;
+      track.addEventListener("scroll", function(){
+        clearTimeout(scrollTimer);
+        scrollTimer = setTimeout(function(){
+          var cards = body.querySelectorAll(".tier-card");
+          var rect = track.getBoundingClientRect();
+          var centerX = rect.left + rect.width/2;
+          var best=0, bestDist=Infinity;
+          cards.forEach(function(el,i){
+            var r = el.getBoundingClientRect();
+            var d = Math.abs((r.left+r.width/2) - centerX);
+            if(d < bestDist){ bestDist=d; best=i; }
+          });
+          if(best !== selectedTierIdx){ selectedTierIdx = best; syncTier(); }
+        }, 90);
+      });
+      body.querySelectorAll(".tier-dot").forEach(function(dot){
+        dot.addEventListener("click", function(){
+          var idx = parseInt(dot.getAttribute("data-dot"),10);
+          var c = body.querySelector('.tier-card[data-idx="'+idx+'"]');
+          if(c) c.scrollIntoView({behavior:"smooth", block:"nearest", inline:"center"});
+        });
+      });
+      setTimeout(function(){
+        var c = body.querySelector('.tier-card[data-idx="'+selectedTierIdx+'"]');
+        if(c) c.scrollIntoView({behavior:"auto", block:"nearest", inline:"center"});
+      }, 30);
+
+      body.querySelector("#edit-card-cancel").addEventListener("click", renderList);
+
+      body.querySelector("#edit-card-submit").addEventListener("click", async function(){
+        var nameInput = body.querySelector("#edit-card-name");
+        var name = nameInput.value.trim();
+        if(!name){ errEl.textContent = "Введіть назву картки"; return; }
+
+        var submitBtn = body.querySelector("#edit-card-submit");
+        var label = body.querySelector("#edit-card-label");
+        submitBtn.disabled = true; label.innerHTML = '<span class="spinner"></span>';
+
+        var fresh = await getUser(state.email);
+        if(!fresh){ showToast("Помилка синхронізації", "error"); closeModal(); return; }
+
+        var targetCard = fresh.cards.find(function(c){ return c.id === card.id; });
+        if(!targetCard){ errEl.textContent = "Картку не знайдено"; submitBtn.disabled=false; syncTier(); return; }
+
+        var tier = CARD_TIERS[selectedTierIdx];
+        var freshOwned = fresh.ownedTiers || ["standard"];
+        var isCurrentTier = tier.id === (targetCard.tier || "standard");
+        var mustPay = tier.price > 0 && !isCurrentTier && freshOwned.indexOf(tier.id) === -1;
+
+        if(mustPay && fresh.balance < tier.price){
+          errEl.textContent = "Недостатньо коштів для цього дизайну";
+          submitBtn.disabled=false; label.textContent = isActive ? "Зберегти" : "Зберегти й активувати"; return;
+        }
+
+        if(mustPay){
+          fresh.balance = Math.round((fresh.balance - tier.price) * 100) / 100;
+          fresh.transactions.push({id:uid(), kind:"card_buy", amount:-tier.price, date: Date.now(), purpose:"Зміна дизайну «" + name + "» на " + tier.name});
+          fresh.ownedTiers = freshOwned.concat([tier.id]);
+        }
+
+        targetCard.label = name;
+        targetCard.tier = tier.id;
+        fresh.activeCardId = targetCard.id;
+
+        var ok = await saveUser(fresh);
+        if(!ok){ errEl.textContent = "Не вдалося зберегти зміни"; submitBtn.disabled=false; syncTier(); return; }
+
+        state.user = fresh;
+        showToast("Картку оновлено!", "gold");
         renderList();
       });
     }
