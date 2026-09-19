@@ -932,6 +932,59 @@ var PHONE_MODEL_JSON = "{\"asset\":{\"version\":\"2.0\",\"generator\":\"THREE.GL
     return true;
   }
 
+  // Коли адмін видаляє модель телефону з каталогу, вона повинна зникнути
+  // з "Моїх покупок" у ВСІХ гравців, які встигли її купити — інакше вона
+  // лишиться в них назавжди, хоч у магазині її вже немає.
+  async function removePhonesFromEveryone(removedIds){
+    if(!removedIds || !removedIds.length) return;
+    function stripUser(u){
+      var changed = false;
+      if(Array.isArray(u.phones)){
+        var before = u.phones.length;
+        u.phones = u.phones.filter(function(p){ return removedIds.indexOf(p.phoneId) === -1; });
+        if(u.phones.length !== before) changed = true;
+      }
+      if(u.phoneData){
+        removedIds.forEach(function(id){
+          if(u.phoneData[id] !== undefined){ delete u.phoneData[id]; changed = true; }
+        });
+      }
+      return changed;
+    }
+
+    if(firebaseReady){
+      try{
+        var qs = await db.collection("users").get();
+        var writes = [];
+        qs.forEach(function(doc){
+          var u = doc.data();
+          if(stripUser(u)) writes.push(db.collection("users").doc(doc.id).set(u));
+        });
+        await Promise.all(writes);
+      }catch(e){}
+    }
+
+    // локальний фолбек: пройтись по всьому, що збережено в цьому браузері
+    try{
+      for(var i=0; i<localStorage.length; i++){
+        var k = localStorage.key(i);
+        if(k && k.indexOf(LOCAL_PREFIX + "user:") === 0){
+          try{
+            var u2 = JSON.parse(localStorage.getItem(k));
+            if(stripUser(u2)) localStorage.setItem(k, JSON.stringify(u2));
+          }catch(e){}
+        }
+      }
+    }catch(e){}
+
+    // якщо телефон був у поточного гравця (наприклад, самого адміна) —
+    // одразу оновити те, що показано на екрані зараз
+    if(state.email){
+      var fresh = await getUser(state.email);
+      if(fresh) state.user = fresh;
+    }
+  }
+
   async function getCardOwnerEmail(cardDigits){
     if(firebaseReady){
       try{
@@ -3068,6 +3121,7 @@ var PHONE_MODEL_JSON = "{\"asset\":{\"version\":\"2.0\",\"generator\":\"THREE.GL
   async function loadAdminBody(container){
     if(!state.adminTab) state.adminTab = "goods";
     state.phones = await getPhoneCatalog();
+    state.phonesOriginalIds = state.phones.map(function(p){ return p.id; }); // знімок для визначення видалених моделей при збереженні
     state.customApps = await getCustomApps();
     state.osUpdates = await getOsUpdates();
 
@@ -3154,7 +3208,16 @@ var PHONE_MODEL_JSON = "{\"asset\":{\"version\":\"2.0\",\"generator\":\"THREE.GL
         itemEl.querySelectorAll("[data-status]").forEach(function(b){
           b.addEventListener("click", function(){ state.phones[idx].status = b.getAttribute("data-status"); paintGoods(); });
         });
-        itemEl.querySelector('[data-act="del"]').addEventListener("click", function(){ state.phones.splice(idx, 1); paintGoods(); });
+        itemEl.querySelector('[data-act="del"]').addEventListener("click", function(){
+          var p = state.phones[idx];
+          var wasSaved = state.phonesOriginalIds.indexOf(p.id) !== -1;
+          var msg = wasSaved
+            ? 'Видалити «' + p.name + '»? Після збереження вона зникне і з "Моїх покупок" у всіх гравців, які її вже купили.'
+            : 'Видалити «' + p.name + '»?';
+          if(!confirm(msg)) return;
+          state.phones.splice(idx, 1);
+          paintGoods();
+        });
         itemEl.querySelector('[data-act="up"]').addEventListener("click", function(){
           if(idx > 0){ var t = state.phones[idx-1]; state.phones[idx-1] = state.phones[idx]; state.phones[idx] = t; paintGoods(); }
         });
@@ -3179,10 +3242,28 @@ var PHONE_MODEL_JSON = "{\"asset\":{\"version\":\"2.0\",\"generator\":\"THREE.GL
           errEl.textContent = "У всіх товарів має бути назва"; return;
         }
         errEl.textContent = "";
+
+        var currentIds = state.phones.map(function(p){ return p.id; });
+        var removedIds = (state.phonesOriginalIds || []).filter(function(id){ return currentIds.indexOf(id) === -1; });
+
         btn.disabled = true; label.innerHTML = '<span class="spinner"></span>';
         var ok = await savePhoneCatalog(state.phones);
+
+        if(ok && removedIds.length){
+          label.textContent = "Видаляємо з покупок гравців…";
+          await removePhonesFromEveryone(removedIds);
+        }
+
+        state.phonesOriginalIds = currentIds;
         btn.disabled = false; label.textContent = "Зберегти для всіх гравців";
-        showToast(ok ? "Магазин оновлено для всіх гравців" : "Не вдалося зберегти", ok ? "gold" : "error");
+        showToast(
+          ok
+            ? (removedIds.length
+                ? "Магазин оновлено. Видалено " + removedIds.length + " модел" + (removedIds.length===1?"ь":"і") + " у всіх гравців"
+                : "Магазин оновлено для всіх гравців")
+            : "Не вдалося зберегти",
+          ok ? "gold" : "error"
+        );
       });
     }
 
